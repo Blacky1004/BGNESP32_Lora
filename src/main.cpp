@@ -254,19 +254,19 @@ void setAPMode(){
 }
 
 String htmlProcessor(const String& var) {
+	RESERVE_STRING(b, LARGE_STR);
 	if(var == "ESP_STYLES"){
-		RESERVE_STRING(b, LARGE_STR);
-		b= FPSTR(styles);
-		return b;
-	}
 		
-	return String();
+		return styles;
+		
+	}
+	return b;		
 }
 
 void setupLAN() {
 	server.on("/", HTTP_GET , [](AsyncWebServerRequest *request) {
-		AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", setup_index, htmlProcessor);
-		request->send(response);
+		//AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", setup_index, htmlProcessor);
+		request->send_P(200, "text/html", setup_index, htmlProcessor);
 	});
 
 	server.begin();
