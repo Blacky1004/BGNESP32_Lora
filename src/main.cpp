@@ -1,7 +1,26 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <WiFi.h>
+#include <SPIFFS.h>
+#include <ArduinoJson.h>
+#include "ESPAsyncWebServer.h"
+#include <AsyncTCP.h>
+
+//HTML Style
+#include "html_styles.h"
+//SetupPage includes
+#include "setup_ap.h"
+
+
+// Alle verwendbaren Module hier laden
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#include "DHTesp.h"
+#include "SDS011.h"
+#include "LoRa.h"
 
 #define SCK 5
 #define MISO 19
@@ -12,7 +31,55 @@
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define FORMAT_SPIFFS_IF_FAILED true
+#define DEFAULT_AP_START "BGN" 
+
+//Frequenzbereich für Europa
+#define BAND 866E6
+
+AsyncWebServer server(80);
+
+//Unsere SSID im AP Mode = BGN-CHIPID
+String mySSID ="";
+
+uint32_t chipId = 0;
+bool loraAvailable = false;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+const char esp_default_config[] PROGMEM = R"rawliteral(
+{
+	"wifi": {
+		"ssid":"",
+		"password":""
+	},
+	"location":{
+		"latitude": 0,
+		"longitude": 0,
+		"height": 0
+	},
+	"lora":{
+		"enabled": true,
+		"c0": true,
+		"c1": true,
+		"c2": true,
+		"c3": true,
+		"c4": true,
+		"c5": true,
+		"c6": true,
+		"c7": true,
+	}
+}	
+)rawliteral";
+StaticJsonDocument<512> config;
+
+bool readConfig();
+bool saveConfig();
+void writeFile(fs::FS &fs, String content);
+String readFile(fs::FS &fs);
+void setAPMode();
+bool checkWiFi();
+void setupLAN();
+String htmlProcessor(const String& var);
 
 const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -65,36 +132,207 @@ const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+
 void setup() {
-  // -> Display initialisierung
-  pinMode(OLED_RST, OUTPUT);
-  digitalWrite(OLED_RST, LOW);
-  delay(20);
-  digitalWrite(OLED_RST, HIGH);
-  Wire.begin(OLED_SDA, OLED_SCL);
-  //Displayinitialisierung ENDE <-
+	Serial.begin(115200);
+	delay(1000);
+	WiFi.disconnect();
+	// -> Display initialisierung
+	pinMode(OLED_RST, OUTPUT);
+	digitalWrite(OLED_RST, LOW);
+	delay(20);
+	digitalWrite(OLED_RST, HIGH);
+	Wire.begin(OLED_SDA, OLED_SCL);
+	//Displayinitialisierung ENDE <-
 
-  //Prüfung ob Display vorhanden
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
-   
-   
-  } else {
-    display.clearDisplay();
-    display.drawBitmap(20,0, lcdlogo, 91,64, WHITE);
-    display.display();
-  }
+	//Prüfung ob Display vorhanden
+	if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
+		//setz der Variable displayAvailable auf false
+		Serial.println("init -> kein LCD vorhanden.");
+	} else {
+		display.clearDisplay();
+		display.drawBitmap(20,0, lcdlogo, 91,64, WHITE);
+		display.display();
+	}
+	
+	//ermitteln der ChipId
+	for(int i=0; i< 17; i=i+8) {
+		chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+	}
+	mySSID = std::move(String(DEFAULT_AP_START) + "-" + String(chipId));
 
-  // -> WLAN Initinitilisierung
+	Serial.printf("ESP32 Chip model = %s Rev %d\n", ESP.getChipModel(), ESP.getChipRevision());
+	Serial.printf("This chip has %d cores\n", ESP.getChipCores());
+  	Serial.print("Chip ID: "); Serial.println(chipId);
+  	
+	if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+		Serial.println("init -> SPIFF Mounting Fehler!");
+	}
+	else{
+		Serial.println("init -> SPIFF gemountet.");
+		
+	}
+	//Pins für LoRa definieren und Kommunikation starten
+	SPI.begin(SCK, MISO, MOSI, SS);
+	LoRa.setPins(SS, RST, DIO0);
+	if(!LoRa.begin(BAND)){
+		Serial.println("init -> LoRa nicht verfügbar...");
+		loraAvailable = false;
+	} else{
+		int rssi = LoRa.rssi();
+		Serial.print("init -> LoRa RSSI=");
+		Serial.print(rssi);
+		Serial.println("dBm.");
+		loraAvailable = true;
+	}
 
-  // WLAN Initialisierung ENDE <-
+	//Lesen der Konfiguration
+	if(!readConfig()){
+		// MCU in den Konfigmodus setzen
+		Serial.println("System wurde noch nicht konfiguriert.");
+		setAPMode();
+	} else {
+		if((!config["lora"]["enabled"] || !loraAvailable ) && config["wifi"]["ssid"] == ""){
+			//MCU in den KonfigModus setzen
+			setAPMode();
+		}
+		else {
+			
+  			
+  			
+		}
+		
+	}
 
-  // -> Lorawan inititialiseirung
+	// -> WLAN Initinitilisierung
 
-  // Lorawan Initialisierung ENDE <-
-  
+	// WLAN Initialisierung ENDE <-
+
+	// -> Lorawan inititialiseirung
+
+	// Lorawan Initialisierung ENDE <-
+
 }
 
+bool checkWiFi(){
+	int c = 0;
+	Serial.println("Warte auf WiFi Verbindung...");
+	display.clearDisplay();
+	display.setTextSize(1);
+	display.setCursor(0,0);
+	display.println("Verbinde zu WLAN....");
+	while (c < 20)
+	{
+		if(WiFi.status() == WL_CONNECTED){
+			return true;
+		}
+		delay(500);
+		Serial.print("*");
+		display.setCursor(c,1);
+		display.print("*");
+		c++;
+	}
+	Serial.println("");
+	Serial.println("Verbindungstimeout. Starte Accesspoint");
+	return false;
+}
+
+void setAPMode(){
+	Serial.println("starte AccessPoint...");
+	WiFi.mode(WIFI_STA);
+	WiFi.softAP(mySSID,"");
+	Serial.print("Meine SSID lautet: ");
+	Serial.println(mySSID);
+	display.clearDisplay();
+	display.setCursor(10,0);
+	display.print("AP");
+	display.setCursor(5,2);
+	display.print("ACCESSPOINT MODUS");
+	display.setCursor(5,4);
+	display.print(mySSID);
+	setupLAN();
+}
+
+String htmlProcessor(const String& var) {
+	if(var == "ESP_STYLES"){
+		RESERVE_STRING(b, LARGE_STR);
+		b= FPSTR(styles);
+		return b;
+	}
+		
+	return String();
+}
+
+void setupLAN() {
+	server.on("/", HTTP_GET , [](AsyncWebServerRequest *request) {
+		AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", setup_index, htmlProcessor);
+		request->send(response);
+	});
+
+	server.begin();
+}
 void loop() {
   // put your main code here, to run repeatedly:
 }
 
+bool readConfig(){
+	String file_content = readFile(SPIFFS);
+
+	int config_file_size = file_content.length();
+	if(config_file_size > 512){
+		Serial.println("config -> Datei zu groß!" );
+		auto error = deserializeJson(config, esp_default_config);
+		return false;
+	}
+
+	auto error = deserializeJson(config, file_content);
+	if(error){
+		Serial.println("config -> Fehler beim lesen der Konfig!");
+		auto error = deserializeJson(config, esp_default_config);
+		if(error){
+			Serial.println("Fehler beim laden der Defaultkonfiguration!");
+		}
+		return false;
+	}
+}
+
+bool saveConfig(){
+	String content = "";
+	serializeJson(config, content);
+	writeFile(SPIFFS, content);
+	return true;
+}
+
+String readFile(fs::FS &fs){
+	Serial.print("config -> lese Konfigurationsdatei... ");
+	File file = fs.open("/config.json");
+	if(!file || file.isDirectory()){
+		Serial.println(" [nicht vorhanden]");
+		return "";
+	}
+
+	String fileText = "";
+	while (file.available())
+	{
+		fileText = file.readString();
+	}
+	file.close();
+	return fileText;
+}
+
+void writeFile(fs::FS &fs, String content) {
+	Serial.println("config -> schreibe Konfigdatei...");
+
+	File file = fs.open("/config.json", FILE_WRITE);
+	if(!file){
+		Serial.println("config -> Fehler beim schreiben der config!");
+		return;
+	}
+
+	if(file.print(content)){
+		Serial.println("config -> Konfiguration erfolgreich gespeichert.");
+	} else{
+		Serial.println("config -> Fehler beim schreiben der Konfiguration!");
+	}
+	file.close();
+}
