@@ -1,20 +1,16 @@
-#pragma once;
-const char setup_index[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <link rel="stylesheet" href="styles.css" />
     <title>LoRa ESP32</title>
-    <style>
-        %ESP_STYLES%
-    </style>
+    
 </head>
 <body>
     <nav class="navbar navbar-expand navbar-light bg-light">
         <div class="container px-5">
-            <a class="navbar-brand" href="javascript:void(0)">BGN32-CHIPID</a>
+            <a class="navbar-brand" href="javascript:void(0)">Setup %CHIPID%</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item">
@@ -30,7 +26,7 @@ const char setup_index[] PROGMEM = R"rawliteral(
     <div class="container px-4 px-lg-5">
         <div class="row gx-4 gx-lg-5 align-items-center my-5">
             <div class="col-lg-4">
-                <img class="img-fluid rounded mb-4 mb-lg-0" src="img/logo-buergernetzgeragreiz.png" alt="logo">
+                <img class="img-fluid rounded mb-4 mb-lg-0" src="logo-buergernetzgeragreiz.png" alt="logo">
             </div>
             <div class="col-lg-8">
                 <h1 class="font-weight-light">Bürgernetz Gera-Greiz Feinstaubsensor</h1>
@@ -47,30 +43,27 @@ const char setup_index[] PROGMEM = R"rawliteral(
         <div class="row gx-4 gx-lg-5">
             <div class="col-md-6 mb-5">
                 <div class="card h-100">
-                    <form>
-                        <div class="card-body">
-                            <h3 class="card-title">WLAN Einstellungen</h3>
-                            <p class="card-text">
-                                Die MCU benötigt für die Versendung der Sensordaten eine aktive Internetverbindung.
-                                Auch wird diese Verbindung für Updates etc. verwendet, da dies nicht über ein verfügbares loRaWAN realisiert werden kann.
-                            </p>
-                            <div class="mb-3">
-                                <label>SSID</label>
-                                <select class="form-control" id="ssid" name="ssid">
-                                    <option value="null">-- Auswahl --</option>
-                                </select>
-                            </div>
-                            <div class="mb-4">
-                                <label>WLAN Passwort</label>
-                                <input type="password" class="form-control" id="ssidpasw" name="ssidpasw" />
-                            </div>
+                    <div class="card-body">
+                        <h3 class="card-title">WLAN Einstellungen</h3>
+                        <p class="card-text">
+                            Die MCU benötigt für die Versendung der Sensordaten eine aktive Internetverbindung.
+                            Auch wird diese Verbindung für Updates etc. verwendet, da dies nicht über ein verfügbares loRaWAN realisiert werden kann.
+                        </p>
+                        <div class="mb-3">
+                            <label>SSID</label>
+                            <select class="form-control" id="ssid" name="ssid">
+                            </select>
                         </div>
-                        <div class="card-footer">
-                            <div class="mt-4 mt-md-0 ms-auto">
-                                <button class="btn btn-primary font-weight-medium rounded-pill px-4">Speichern</button>
-                            </div>
+                        <div class="mb-4">
+                            <label>WLAN Passwort</label>
+                            <input type="password" class="form-control" id="ssidpasw" name="ssidpasw" />
                         </div>
-                    </form>
+                    </div>
+                    <div class="card-footer">
+                        <div class="mt-4 mt-md-0 ms-auto">
+                            <button onclick="checkwifi()" class="btn btn-primary font-weight-medium rounded-pill px-4">Speichern</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-6 mb-5">
@@ -89,7 +82,7 @@ const char setup_index[] PROGMEM = R"rawliteral(
                                 </p>
                                 <div class="row">
                                     <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input" disabled checked/>
+                                        <input type="checkbox" id="channel1" class="form-check-input" disabled checked/>
                                         <label>Kanal 1</label>
                                     </div>
                                     <div class="col-md-3">
@@ -139,7 +132,8 @@ const char setup_index[] PROGMEM = R"rawliteral(
 
     </footer>
     <script>
-        var loraAvailable = true;
+        var xhttp = new XMLHttpRequest();
+        var loraAvailable = %LORAAVAILABLE%;
         var useLora = false;
         var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
         document.addEventListener("DOMContentLoaded", () => {
@@ -157,8 +151,37 @@ const char setup_index[] PROGMEM = R"rawliteral(
                 for(var i = 0; i < loraNodes.length; i++){
                     loraNodes[i].disabled = false;
                 }
+                document.getElementById("channel1").disabled = true;
             }
+            xhttp.onreadystatechange = function() {
+                if(this.readyState == 4 && this.status == 200){
+                    let wifilist = '<option value="null">-- Auswahl --</option>';
+                    console.log(this.responseText);
+                    var datas = JSON.parse(this.responseText);
+                    for(var i= 0; i < datas.length; i++){
+                        wifilist += '<option value="' + datas[i]["ssid"]+'">'+datas[i]["ssid"]+"</option>";
+                    }
+                    document.getElementById('ssid').innerHTML = wifilist;
+                }
+            };
+            xhttp.open("GET", "/scan_wifi", true);
+            xhttp.send();
         });
+        function checkwifi(){
+            let ssid = document.getElementById("ssid").vaue;
+            let pasw = document.getElementById("ssidpasw").value;
+            let json = {
+                ssid: ssid,
+                pasw: pasw
+            };
+            xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function(){
+
+            }
+            xhttp.open("GET","/test_wifi", true);
+            xhttp.setRequestHeader("Content-type", "application/json");
+            xhttp.send(json);
+        }
     </script>
     <div class="modal" id="systemRestart">
         <div class="modal-content">
@@ -167,4 +190,3 @@ const char setup_index[] PROGMEM = R"rawliteral(
     </div>
 </body>
 </html>
-)rawliteral";
