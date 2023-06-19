@@ -159,7 +159,7 @@
     </footer>
     <script>
         
-        var loraAvailable = false;//%LORAAVAILABLE%;
+        var loraAvailable = true;//%LORAAVAILABLE%;
         var useLora = false;
         var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
         document.addEventListener("DOMContentLoaded", () => {
@@ -171,7 +171,7 @@
                 for(var i = 0; i < loraNodes.length; i++){
                     loraNodes[i].disabled = true;
                 }
-                document.getElementById("useLora").checked = false;
+                document.getElementById("useLora").checked = true;
             }
             else {
                 loraText = "Bei Unsicherheit bei diesen Einstellungen wende dich bitte an die Mitglieder des Bürgernetz Gera-Greiz e.V";
