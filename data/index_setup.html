@@ -36,7 +36,7 @@
                 <p>Hier ne kurze Einführung etc. zum Projekt und wo man sich z.B. bei Problemen hinwenden kann.</p>
             </div>
         </div>
-        <div class="card text-white bg-primary my-5 py-4 text-center">
+        <div class="card text-white bg-bnetz my-5 py-4 text-center">
             <div class="card-body">
                 <p class="text-white m-0">
                     Wichtige Hinweise zu den untenstehenden Einstellungen
@@ -45,15 +45,16 @@
         </div>
         <div class="row gx-4 gx-lg-5" id="pDashboerd">
             <div class="col-md-6 mb-5">
-                <div class="card h-100">
+                <div class="card h-100" id="wlansetup">
                     <div class="card-body">
                         <h3 class="card-title">WLAN Einstellungen</h3>
                         <p class="card-text">
-                            Die MCU benötigt für die Versendung der Sensordaten eine aktive Internetverbindung.
-                            Auch wird diese Verbindung für Updates etc. verwendet, da dies nicht über ein verfügbares loRaWAN realisiert werden kann.
+                            Möchten Sie auf diesem System Internet über WLAN verenden, weil bspw. kein LoRaWAN zur Verfügung steht, oder
+                            Sie dieses System über Remote steuern, so geben Sie bitte hier die entsprechenden Daten für ihren Router ein.
+                            Natürlich können Sie auch, wenn verfügbar, Freifunk als WLAN verwenden.
                         </p>
                         <div class="mb-3">
-                            <input type="checkbox" class="form-check-input" id="enableWlan" name="enableWlan"/>
+                            <input type="checkbox" class="form-check-input" id="enableWlan" name="enableWlan" checked/>
                             <label for="enableWlan">WLAN aktivieren</label>
                         </div>
                         <div class="mb-3">
@@ -80,7 +81,7 @@
                             <h3 class="card-title">LoRaWAN Einstellungen</h3>
                             <p class="card-text" id="ltitle"></p>
                             <div class="mb-3">
-                                <input type="checkbox" class="form-check-input" id="useLora" name="useLora" />
+                                <input type="checkbox" class="form-check-input" id="useLora" name="useLora" checked/>
                                 <label for="useLora">LoRaWAN verwenden</label>
                             </div>
                             <div class="mb-3">
@@ -170,6 +171,7 @@
                 for(var i = 0; i < loraNodes.length; i++){
                     loraNodes[i].disabled = true;
                 }
+                document.getElementById("useLora").checked = false;
             }
             else {
                 loraText = "Bei Unsicherheit bei diesen Einstellungen wende dich bitte an die Mitglieder des Bürgernetz Gera-Greiz e.V";
@@ -194,6 +196,33 @@
             };
             xhttp.open("GET", "/scan_wifi", true);
             xhttp.send();
+
+        });
+        document.getElementById("enableWlan").addEventListener('click', function(e){
+            var wlanNodes = document.getElementById("wlansetup").getElementsByTagName("*");
+            for(var i = 0; i < wlanNodes.length; i++) {
+                if(document.getElementById("enableWlan").checked){
+                    wlanNodes[i].disabled = false;
+                }
+                else {
+                    wlanNodes[i].disabled = true;
+                    document.getElementById("enableWlan").disabled = false;
+                }
+            }
+        });
+        document.getElementById("useLora").addEventListener('click', function(e) {
+            var loraNodes = document.getElementById('loraSetup').getElementsByTagName('*');
+                for(var i = 0; i < loraNodes.length; i++){
+                    if(document.getElementById("useLora").checked) {
+                        loraNodes[i].disabled = false;
+                    }
+                    else {
+                        loraNodes[i].disabled = true;
+                        document.getElementById("useLora").disabled = false;
+                    }                    
+                }
+                document.getElementById("channel1").disabled = true;
+                
         });
         function checkwifi(){
             let ssid = document.getElementById("ssid").vaue;

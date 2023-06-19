@@ -83,6 +83,7 @@
   --bs-link-hover-color: #0a58ca;
   --bs-code-color: #d63384;
   --bs-highlight-bg: #fff3cd;
+  --bs-bgnetz-rgb: 253, 186. 17;
 }
 
 *,
@@ -8147,6 +8148,10 @@ textarea.form-control-lg {
 
 .text-opacity-100 {
   --bs-text-opacity: 1;
+}
+.bg-bnetz {
+  --bs-bg-opacity: 1;
+  background-color: rgba(var(--bs-bgnetz-rgb), var(--bs-bg-opacity)) !important;
 }
 
 .bg-primary {
