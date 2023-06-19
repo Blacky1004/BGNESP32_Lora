@@ -9,13 +9,12 @@
 #include "ESPAsyncWebServer.h"
 #include <AsyncTCP.h>
 #include <AsyncJson.h>
-
-// Alle verwendbaren Module hier laden
+#include <lmic.h>
+#include <hal\hal.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "DHTesp.h"
 #include "SDS011.h"
-#include "LoRa.h"
 
 #define SCK 5
 #define MISO 19
@@ -24,13 +23,16 @@
 #define RST 14
 #define DIO0 26
 
+#define KONFIG_MODE 0
+#define WLAN_MODE 2
+#define LORA_MODE 4
+
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define FORMAT_SPIFFS_IF_FAILED true
-#define DEFAULT_AP_START "BNG" 
 
-//Frequenzbereich für Europa
-#define BAND 866E6
+#define FORMAT_SPIFFS_IF_FAILED true
+
+#define DEFAULT_AP_START "BNG" 
 
 AsyncWebServer server(80);
 
@@ -39,8 +41,30 @@ String mySSID ="";
 
 uint32_t chipId = 0;
 bool loraAvailable = false;
+uint8_t aktualKonfigMode = KONFIG_MODE;
 
+//LoRa TTN Device-Daten
+static u1_t NWKSKEY[16];
+static u1_t APPSKEY[16];
+static u4_t DEVADDR;
+
+void os_getArtEui (u1_t* buf) { }
+void os_getDevEui (u1_t* buf) { }
+void os_getDevKey (u1_t* buf) { }
+
+static osjob_t sendjob;
+const unsigned TX_INTERVAL = 60;
+
+const lmic_pinmap lmic_pins = { // Pins des TTGO ESP32 LoRa Board
+  .nss = 18,
+  .rxtx = LMIC_UNUSED_PIN,
+  .rst = 14,
+  .dio = {26, 33, 32},
+};
+//LCD Screen
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+
+//-> Defaultkonfiguration
 const char esp_default_config[] PROGMEM = R"rawliteral(
 {
 	"wifi": {
@@ -53,7 +77,7 @@ const char esp_default_config[] PROGMEM = R"rawliteral(
 		"height": 0
 	},
 	"lora":{
-		"enabled": true,
+		"enabled": false,
 		"c0": true,
 		"c1": true,
 		"c2": true,
@@ -61,25 +85,20 @@ const char esp_default_config[] PROGMEM = R"rawliteral(
 		"c4": true,
 		"c5": true,
 		"c6": true,
-		"c7": true
+		"c7": true,
+        "newskey":[],
+        "appskey":[],
+        "devid":"260B19DF"
 	},
 	"data_setup":{
-		"preferred":"lora"
+		"preferred":"lora_and_wlan"
 	}
 }	
 )rawliteral";
 StaticJsonDocument<512> config;
+//<- Ende Defaultkonfiguration
 
-bool readConfig();
-bool saveConfig();
-void writeFile(fs::FS &fs, String content);
-String readFile(fs::FS &fs);
-void setAPMode();
-bool checkWiFi();
-void setupLAN();
-String htmlProcessor(const String& var);
-void getLoraData();
-
+//-> Flashdaten
 const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xfe, 0x00, 0x00, 
@@ -130,13 +149,38 @@ const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
+//<- Ende Flashdaten
 
+//-> Interne Methoden
+bool readConfig();
+bool saveConfig();
+void writeFile(fs::FS &fs, String content);
+String readFile(fs::FS &fs);
+//<- Ende Interne Methoden
 
-void setup() {
-	Serial.begin(115200);
-	delay(1000);
-	WiFi.disconnect();
-	// -> Display initialisierung
+static uint8_t sensorPayload[]="";
+
+void do_send(osjob_t* j) {
+  // Check if there is not a current TX/RX job running
+  if (LMIC.opmode & OP_TXRXPEND) {
+    Serial.println(F("OP_TXRXPEND, nicht senden"));
+  } else {
+    // Prepare upstream data transmission at the next possible time.
+
+    LMIC_setTxData2(1, sensorPayload, sizeof(sensorPayload)-1, 0);
+    Serial.println(F("Packet in der Warteschlange"));
+  }
+  // Next TX is scheduled after TX_COMPLETE event.
+}
+
+void setup(){
+    Serial.begin(115200);
+    delay(1000);
+    WiFi.disconnect();
+    SPI.begin(SCK, MISO, MOSI, SS);
+    Serial.println("Starte System....");
+
+    // -> Display initialisierung
 	pinMode(OLED_RST, OUTPUT);
 	digitalWrite(OLED_RST, LOW);
 	delay(20);
@@ -144,7 +188,7 @@ void setup() {
 	Wire.begin(OLED_SDA, OLED_SCL);
 	//Displayinitialisierung ENDE <-
 
-	//Prüfung ob Display vorhanden
+    //Prüfung ob Display vorhanden
 	if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
 		//setz der Variable displayAvailable auf false
 		Serial.println("init -> kein LCD vorhanden.");
@@ -153,8 +197,8 @@ void setup() {
 		display.drawBitmap(20,0, lcdlogo, 91,64, WHITE);
 		display.display();
 	}
-	
-	//ermitteln der ChipId
+
+    //ermitteln der ChipId
 	for(int i=0; i< 17; i=i+8) {
 		chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
 	}
@@ -165,258 +209,18 @@ void setup() {
   	Serial.print("Chip ID: "); Serial.println(chipId);
   	
 	if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
-		Serial.println("init -> SPIFF Mounting Fehler!");
-	}
-	else{
-		Serial.println("init -> SPIFF gemountet.");
-		
-	}
-	delay(5000);
-	//Pins für LoRa definieren und Kommunikation starten
-	SPI.begin(SCK, MISO, MOSI, SS);
-	LoRa.setPins(SS, RST, DIO0);
-	if(!LoRa.begin(BAND)){
-		Serial.println("init -> LoRa nicht verfügbar...");
-		loraAvailable = false;
-	} else{
-		int rssi = LoRa.rssi();
-		Serial.print("init -> LoRa RSSI=");
-		Serial.print(rssi);
-		Serial.println("dBm.");
-		loraAvailable = true;
+		Serial.println("init -> SPIFF Mounting Fehler! System stopped.");
+		for(;;);
 	}
 
-	//Lesen der Konfiguration
-	if(!readConfig()){
-		// MCU in den Konfigmodus setzen
-		Serial.println("System wurde noch nicht konfiguriert.");
-		setAPMode();
-	} else {
-		if((!config["lora"]["enabled"] || !loraAvailable ) && config["wifi"]["ssid"] == ""){
-			//MCU in den KonfigModus setzen
-			setAPMode();
-		}
-		else {
-			
-  			
-  			
-		}
-		
-	}
+	Serial.println("init -> SPIFF gemountet.");		
 
-	// -> WLAN Initinitilisierung
+	//Lesen der Konfiguration 'config.json' (wenn) vorhanden
+    if(!readConfig()){
+        // System in den Konfigmodus stellen
+        aktualKonfigMode = KONFIG_MODE;
+        
+    } else {
 
-	// WLAN Initialisierung ENDE <-
-
-	// -> Lorawan inititialiseirung
-
-	// Lorawan Initialisierung ENDE <-
-
-}
-
-bool checkWiFi(char* ssid, char* password){
-	int c = 0;
-	Serial.println("Warte auf WiFi Verbindung...");
-	display.clearDisplay();
-	display.setTextSize(1);      // Normal 1:1 pixel scale
-  	display.setTextColor(WHITE);
-	display.setCursor(0,0);
-	display.println("Verbinde zu WLAN....");
-	WiFi.begin(ssid, password);
-	int x=0;
-	while (c < 20)
-	{
-		if(WiFi.status() == WL_CONNECTED){
-			return true;
-		}
-		delay(500);
-		Serial.print("*");
-		display.setCursor(x,10);
-		display.print("*");
-		display.display();
-		c++;
-		x +=7;
-	}
-	Serial.println("");
-	Serial.println("Verbindungstimeout. Starte Accesspoint");
-	return false;
-}
-
-void setAPMode(){
-
-	Serial.println("starte AccessPoint...");
-	WiFi.mode(WIFI_STA);
-	WiFi.softAP(mySSID,"");
-	Serial.print("Meine SSID lautet: ");
-	Serial.println(mySSID);
-	display.clearDisplay();
-	display.setTextSize(1);      // Normal 1:1 pixel scale
-  	display.setTextColor(WHITE);
-  	display.setCursor(90,0);
-	display.print("AP");
-	display.setCursor(5,20);
-	display.print("ACCESSPOINT MODUS");
-	display.setCursor(5,40);
-	display.print(mySSID);
-	display.display();
-	setupLAN();
-}
-
-String htmlProcessor(const String& var) {
-	Serial.println(var);
-	if(var == "LORAAVAILABLE"){	
-		String av = "false";	
-		if(loraAvailable == true) {
-			av = "true";
-		}
-		return av;
-	}
-	if(var == "CHIPID") {
-		String av = "UNBEKANNT";
-		av = mySSID;
-		return av;
-	}
-	return String();		
-}
-
-void setupLAN() {
-	server.serveStatic("/",SPIFFS,"/www/");
-	server.on("/", HTTP_GET , [](AsyncWebServerRequest *request) {
-		request->send(SPIFFS, "/index_setup.html" , String(), false, htmlProcessor);
-	});
-	server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request){
-		request->send(SPIFFS, "/styles.css", "text/css");
-	});
-	server.on("/logo-buergernetzgeragreiz.png", HTTP_GET, [](AsyncWebServerRequest *request){
-		request->send(SPIFFS, "/logo-buergernetzgeragreiz.png", "image/png");
-	});
-	server.on("/nav_bg.png", HTTP_GET, [](AsyncWebServerRequest *request){
-		request->send(SPIFFS, "/nav_bg.png", "image/png");
-	});
-	//AJAX Functionen
-	server.on("/scan_wifi", HTTP_GET, [](AsyncWebServerRequest *request) {
-		String json = "[";
-		int n = WiFi.scanComplete();
-		if(n == -2){
-		WiFi.scanNetworks(true);
-		} else if(n){
-		for (int i = 0; i < n; ++i){
-			if(i) json += ",";
-			json += "{";
-			json += "\"rssi\":"+String(WiFi.RSSI(i));
-			json += ",\"ssid\":\""+WiFi.SSID(i)+"\"";
-			json += ",\"bssid\":\""+WiFi.BSSIDstr(i)+"\"";
-			json += ",\"channel\":"+String(WiFi.channel(i));
-			json += ",\"secure\":"+String(WiFi.encryptionType(i));			
-			json += "}";
-		}
-			WiFi.scanDelete();
-			if(WiFi.scanComplete() == -2){
-				WiFi.scanNetworks(true);
-			}
-		}
-		json += "]";
-		request->send(200, "application/json", json);
-		json = String();	
-  	});
-	
-	AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/test_wifi", [](AsyncWebServerRequest *request, JsonVariant &json) {
-		StaticJsonDocument<200> data;
-		if (json.is<JsonArray>())
-		{
-			data = json.as<JsonArray>();
-		}
-		else if (json.is<JsonObject>())
-		{
-			data = json.as<JsonObject>();
-		}
-		String response;
-		serializeJson(data, response);
-		request->send(200, "application/json", response);
-		Serial.println(response);
-	});
-	server.addHandler(handler);
-	//<- ENDE AXAX Funktionen
-	server.begin();
-}
-void loop() {
-  // put your main code here, to run repeatedly:
-  
-  
-}
-void getLoraData(){
-	while (LoRa.available())
-	{
-		String loraData = LoRa.readString();
-		Serial.println(loraData);
-	}
-	int rssi = LoRa.packetRssi();
-	Serial.print("RSSI: ");
-	Serial.println(rssi);
-}
-bool readConfig(){
-	String file_content = readFile(SPIFFS);
-
-	int config_file_size = file_content.length();
-	if(config_file_size > 512){
-		Serial.println("config -> Datei zu groß!" );
-		auto error = deserializeJson(config, esp_default_config);
-		if(error) {
-			Serial.println("Fehler beim laden der Werkseinstellungen!");
-		}
-		return false;
-	}
-
-	auto error = deserializeJson(config, file_content);
-	if(error){
-		Serial.println("config -> Fehler beim lesen der Konfig!");
-		auto error = deserializeJson(config, esp_default_config);
-		if(error){
-			Serial.println("Fehler beim laden der Werkseinstellungen!");
-		}
-		return false;
-	}
-	return true;
-}
-
-bool saveConfig(){
-	String content = "";
-	serializeJson(config, content);
-	writeFile(SPIFFS, content);
-	return true;
-}
-
-String readFile(fs::FS &fs){
-	Serial.print("config -> lese Konfigurationsdatei... ");
-	File file = fs.open("/config.json");
-	if(!file || file.isDirectory()){
-		Serial.println(" [nicht vorhanden]");		
-		return "";
-	}
-
-	String fileText = "";
-	while (file.available())
-	{
-		fileText = file.readString();
-	}
-	file.close();
-
-	return fileText;
-}
-
-void writeFile(fs::FS &fs, String content) {
-	Serial.println("config -> schreibe Konfigdatei...");
-
-	File file = fs.open("/config.json", FILE_WRITE);
-	if(!file){
-		Serial.println("config -> Fehler beim schreiben der config!");
-		return;
-	}
-
-	if(file.print(content)){
-		Serial.println("config -> Konfiguration erfolgreich gespeichert.");
-	} else{
-		Serial.println("config -> Fehler beim schreiben der Konfiguration!");
-	}
-	file.close();
+    }
 }

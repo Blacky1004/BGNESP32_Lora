@@ -14,10 +14,13 @@
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="/wifisetup">WiFi Setup</a>
+                        <a class="nav-link active" aria-current="page" href="javascript:void(0)" id="lnkHome" onclick="showDasboard()">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/mcusetup">MCU Setup</a>
+                        <a class="nav-link" href="javascript:void(0)" id="lnkConnections" onclick="showConnections()">Verbindungen</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0)" id="lnkSensors" onclick="showSensors()">Sensoren</a>
                     </li>
                 </ul>
             </div>
@@ -40,7 +43,7 @@
                 </p>
             </div>
         </div>
-        <div class="row gx-4 gx-lg-5">
+        <div class="row gx-4 gx-lg-5" id="pDashboerd">
             <div class="col-md-6 mb-5">
                 <div class="card h-100">
                     <div class="card-body">
@@ -49,6 +52,10 @@
                             Die MCU benötigt für die Versendung der Sensordaten eine aktive Internetverbindung.
                             Auch wird diese Verbindung für Updates etc. verwendet, da dies nicht über ein verfügbares loRaWAN realisiert werden kann.
                         </p>
+                        <div class="mb-3">
+                            <input type="checkbox" class="form-check-input" id="enableWlan" name="enableWlan"/>
+                            <label for="enableWlan">WLAN aktivieren</label>
+                        </div>
                         <div class="mb-3">
                             <label>SSID</label>
                             <select class="form-control" id="ssid" name="ssid">
@@ -66,7 +73,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 mb-5">
+            <div class="col-md-6 mb-5" >
                 <div class="card h-100" id="loraSetup">
                     <form>
                         <div class="card-body">
@@ -75,6 +82,18 @@
                             <div class="mb-3">
                                 <input type="checkbox" class="form-check-input" id="useLora" name="useLora" />
                                 <label for="useLora">LoRaWAN verwenden</label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="nwkskey">NwkSKey</label>
+                                <input type="text" class="form-control" id="nwkskey" name="nwkskey" placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="appskey">AppSKey</label>
+                                <input type="text" class="form-control" id="appskey" name="appskey" placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="devaddr">DevAddr</label>
+                                <input type="text" class="form-control" id="devaddr" name="devaddr" placeholder="00 00 00 00"/>
                             </div>
                             <div class="mb-3">
                                 <p>Sollte der Gateyway ein Single-Gateway sein, so ist hier nur der festeingestellte Kanal 1 zu verwenden.
@@ -127,16 +146,24 @@
                 </div>                
             </div>
         </div>
+        <div class="row gx-4 gx-lg-5" id="pConnections">
+
+        </div>
+        <div class="row gx-4 gx-lg-5" id="pSensors">
+
+        </div>
     </div>
     <footer class="py-5 footer-light">
 
     </footer>
     <script>
-        var xhttp = new XMLHttpRequest();
-        var loraAvailable = %LORAAVAILABLE%;
+        
+        var loraAvailable = false;//%LORAAVAILABLE%;
         var useLora = false;
         var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
         document.addEventListener("DOMContentLoaded", () => {
+            //Beim start immer die DashbordDiv aktivieren, den rest disablen
+            showDasboard();
             if(!loraAvailable){
                 document.getElementById("ltitle").innerHTML = loraText;
                 var loraNodes = document.getElementById('loraSetup').getElementsByTagName('*');
@@ -153,6 +180,7 @@
                 }
                 document.getElementById("channel1").disabled = true;
             }
+            var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function() {
                 if(this.readyState == 4 && this.status == 200){
                     let wifilist = '<option value="null">-- Auswahl --</option>';
@@ -174,13 +202,28 @@
                 ssid: ssid,
                 pasw: pasw
             };
-            xhttp = new XMLHttpRequest();
+            var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function(){
-
+                console.log(this.responseText);
             }
-            xhttp.open("GET","/test_wifi", true);
+            xhttp.open("POST","/test_wifi", true);
             xhttp.setRequestHeader("Content-type", "application/json");
             xhttp.send(json);
+        }
+        function showConnections(){
+            document.getElementById("pDashboerd").style.display = "none"
+            document.getElementById("pConnections").style.display = "flex"
+            document.getElementById("pSensors").style.display = "none"
+        }
+        function showSensors() {
+            document.getElementById("pDashboerd").style.display = "none"
+            document.getElementById("pConnections").style.display = "none"
+            document.getElementById("pSensors").style.display = "flex"           
+        }
+        function showDasboard(){
+            document.getElementById("pDashboerd").style.display = "flex"
+            document.getElementById("pConnections").style.display = "none"
+            document.getElementById("pSensors").style.display = "none"
         }
     </script>
     <div class="modal" id="systemRestart">

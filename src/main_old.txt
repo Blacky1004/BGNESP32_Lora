@@ -1,0 +1,655 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <WiFi.h>
+#include <SPIFFS.h>
+#include <ArduinoJson.h>
+#include "ESPAsyncWebServer.h"
+#include <AsyncTCP.h>
+#include <AsyncJson.h>
+#include <lmic.h>
+#include <hal\hal.h>
+
+// Alle verwendbaren Module hier laden
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#include "DHTesp.h"
+#include "SDS011.h"
+#include "LoRa.h"
+
+#define SCK 5
+#define MISO 19
+#define MOSI 27
+#define SS 18
+#define RST 14
+#define DIO0 26
+
+#define KONFIG_MODE 0
+#define WLAN_MODE 2
+#define LORA_MODE 4
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+#define FORMAT_SPIFFS_IF_FAILED true
+
+#define DEFAULT_AP_START "BNG" 
+
+//Frequenzbereich für Europa
+#define BAND 866E6
+
+AsyncWebServer server(80);
+
+//Unsere SSID im AP Mode = BGN-CHIPID
+String mySSID ="";
+
+uint32_t chipId = 0;
+bool loraAvailable = false;
+uint8_t aktualKonfigMode = KONFIG_MODE;
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+const char esp_default_config[] PROGMEM = R"rawliteral(
+{
+	"wifi": {
+		"ssid":"",
+		"password":""
+	},
+	"location":{
+		"latitude": 0,
+		"longitude": 0,
+		"height": 0
+	},
+	"lora":{
+		"enabled": false,
+		"c0": true,
+		"c1": true,
+		"c2": true,
+		"c3": true,
+		"c4": true,
+		"c5": true,
+		"c6": true,
+		"c7": true
+	},
+	"data_setup":{
+		"preferred":"lora_then_wlan"
+	}
+}	
+)rawliteral";
+StaticJsonDocument<512> config;
+
+bool readConfig();
+bool saveConfig();
+void writeFile(fs::FS &fs, String content);
+String readFile(fs::FS &fs);
+void setAPMode();
+void setLoraMode(bool wlansend);
+void setWlanMode();
+bool checkWiFi(String ssid, String password);
+void setupLAN();
+String htmlProcessor(const String& var);
+void getLoraData();
+
+const unsigned char lcdlogo [] PROGMEM = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xfe, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x0f, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0x80, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x0f, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xfe, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x03, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x07, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xfd, 0x01, 0xff, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0x3f, 0xff, 0xc0, 0x1f, 0xf8, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x1f, 0xfe, 0xff, 0xff, 0xf0, 0xff, 0xbe, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x1f, 0xff, 0x7e, 0x9f, 0xf7, 0xe7, 0xb6, 0x40, 0x00, 0x08, 0x00, 0x00, 0x3f, 0xff, 0xbf, 0xf3, 
+	0xff, 0xef, 0xbb, 0x00, 0x00, 0x3f, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xfc, 0xd9, 0xef, 0xbb, 0x00, 
+	0x00, 0x7f, 0xc0, 0x00, 0xff, 0xff, 0xa0, 0x0f, 0xf9, 0xef, 0x7b, 0x40, 0x00, 0xff, 0xe0, 0x00, 
+	0xff, 0xff, 0xc0, 0x07, 0x7b, 0xef, 0x7b, 0x00, 0x01, 0xff, 0xe0, 0x01, 0xff, 0xff, 0xe0, 0x0f, 
+	0x7b, 0xde, 0x76, 0x80, 0x01, 0xff, 0xf0, 0x01, 0xff, 0xff, 0xd0, 0x3b, 0x7b, 0xde, 0xee, 0x00, 
+	0x03, 0xff, 0xe0, 0x03, 0xff, 0xff, 0xe0, 0x63, 0x7b, 0x9d, 0xfd, 0x00, 0x03, 0xff, 0xf0, 0x0e, 
+	0xff, 0xff, 0x21, 0xc3, 0xf7, 0xbd, 0xfc, 0x00, 0x01, 0xff, 0xf0, 0x3f, 0xaf, 0x5a, 0xc3, 0x02, 
+	0xf7, 0x7b, 0xba, 0x00, 0x01, 0xff, 0xc0, 0x7f, 0x29, 0x6f, 0x46, 0x06, 0xef, 0x77, 0xf0, 0x00, 
+	0x01, 0xff, 0xe0, 0xfc, 0x04, 0x00, 0x1c, 0x07, 0xee, 0xf7, 0x68, 0x00, 0x00, 0xff, 0x83, 0xf0, 
+	0x00, 0x00, 0x30, 0x0f, 0xdd, 0xee, 0xd0, 0x00, 0x01, 0x7f, 0x97, 0xe0, 0x60, 0x00, 0x60, 0x0f, 
+	0xfd, 0xdd, 0xa0, 0x00, 0x00, 0xff, 0x4f, 0x83, 0xf0, 0x00, 0x60, 0x1f, 0xbb, 0xbd, 0x40, 0x00, 
+	0x01, 0xff, 0xbf, 0x0f, 0xfc, 0x01, 0x80, 0x37, 0x77, 0x36, 0x00, 0x00, 0x03, 0xff, 0xfe, 0x0f, 
+	0xfe, 0x01, 0x80, 0x6e, 0xef, 0x7d, 0x00, 0x00, 0x03, 0xff, 0xfc, 0x1f, 0xff, 0x03, 0x00, 0x7d, 
+	0xde, 0xf8, 0x00, 0x00, 0x07, 0xff, 0xd0, 0x1f, 0xff, 0x06, 0x00, 0xfb, 0xbd, 0xec, 0x00, 0x00, 
+	0x0f, 0xff, 0xe0, 0x3f, 0xff, 0x0c, 0x01, 0xf7, 0x3b, 0xd0, 0x00, 0x00, 0x0f, 0xff, 0xf0, 0x3f, 
+	0xff, 0x0c, 0x03, 0xfe, 0xf7, 0x40, 0x00, 0x00, 0x1f, 0xff, 0xe8, 0x3f, 0xfd, 0x08, 0x0f, 0xdc, 
+	0xee, 0x80, 0x00, 0x00, 0x3f, 0xff, 0xf4, 0x1f, 0xfd, 0x18, 0x0f, 0xbb, 0xda, 0x00, 0x00, 0x00, 
+	0x3f, 0xff, 0xf4, 0x1f, 0xfe, 0x18, 0x3f, 0x77, 0xf4, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xf8, 0x0f, 
+	0xfc, 0x18, 0x6e, 0xef, 0xc0, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xf4, 0x0f, 0xfa, 0x18, 0xff, 0xdf, 
+	0x50, 0x00, 0x00, 0x00, 0x5f, 0xff, 0xe4, 0x0f, 0xf0, 0x1d, 0xf7, 0xf5, 0x00, 0x00, 0x00, 0x00, 
+	0x0d, 0xff, 0xb8, 0x1f, 0xfc, 0x0e, 0xe7, 0xf4, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xb2, 0xc0, 0x3f, 
+	0xfa, 0x17, 0xff, 0x20, 0x00, 0x00, 0x00, 0x00, 0x07, 0xe8, 0x00, 0x7f, 0xfc, 0x36, 0x12, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x07, 0x60, 0x00, 0x7f, 0xfe, 0xfe, 0xa8, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x0f, 0xc0, 0x00, 0xff, 0xff, 0xfa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1e, 0xc0, 0x01, 0xff, 
+	0xff, 0xf4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1e, 0xc0, 0x01, 0xff, 0xfe, 0xd0, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x1e, 0xc0, 0x03, 0xff, 0xff, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x1e, 0xc0, 0x03, 0xff, 0xff, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3e, 0xe0, 0x07, 0xff, 
+	0xff, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3e, 0x70, 0x03, 0xff, 0xff, 0x80, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x1f, 0x3f, 0xff, 0xff, 0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x1f, 0xcf, 0xfc, 0xfb, 0x69, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f, 0xf8, 0x7f, 0xcd, 
+	0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4f, 0xff, 0xff, 0xb0, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xfc, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0xff, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xa0, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+// LoRaWAN NwkSKey, network session key
+static const PROGMEM u1_t NWKSKEY[16] = { 0x22, 0xE2, 0xAD, 0x04, 0x62, 0xD6, 0x22, 0x56, 0xFE, 0x24, 0x3E, 0xDD, 0x7C, 0x4E, 0x26, 0x42 };
+
+// LoRaWAN AppSKey, application session key
+static const u1_t PROGMEM APPSKEY[16] = { 0x6B, 0x50, 0x6C, 0x93, 0x9F, 0xAF, 0xF6, 0x24, 0xB0, 0xFC, 0x7D, 0x82, 0xD6, 0x66, 0x97, 0x8C };
+// LoRaWAN end-device address (DevAddr)
+static const u4_t DEVADDR = 0x260B19DF; // <-- Change this address for every node!
+
+// These callbacks are only used in over-the-air activation, so they are
+// left empty here (we cannot leave them out completely unless
+// DISABLE_JOIN is set in config.h, otherwise the linker will complain).
+void os_getArtEui (u1_t* buf) { }
+void os_getDevEui (u1_t* buf) { }
+void os_getDevKey (u1_t* buf) { }
+
+static osjob_t sendjob;
+
+// Schedule TX every this many seconds (might become longer due to duty
+// cycle limitations).
+const unsigned TX_INTERVAL = 60;
+
+// Pin mapping
+const lmic_pinmap lmic_pins = { // Pins on TTGO ESP32 LoRa Board
+  .nss = 18,
+  .rxtx = LMIC_UNUSED_PIN,
+  .rst = 14,
+  .dio = {26, 33, 32},
+};
+
+
+
+void do_send(osjob_t* j) {
+  // Check if there is not a current TX/RX job running
+  if (LMIC.opmode & OP_TXRXPEND) {
+    Serial.println(F("OP_TXRXPEND, not sending"));
+  } else {
+    // Prepare upstream data transmission at the next possible time.
+
+    static uint8_t payload[] = "YOUR-PAYLOAD"; //Edit your Payload
+
+    LMIC_setTxData2(1, payload, sizeof(payload)-1, 0);
+    Serial.println(F("Packet queued"));
+  }
+  // Next TX is scheduled after TX_COMPLETE event.
+}
+
+
+void setup() {
+ Serial.begin(115200);
+ delay(1000);
+  SPI.begin(SCK, MISO, MOSI, SS); // Pins on Heltec ESP32 LoRa Board
+  Serial.println(F("Starting"));
+
+#ifdef VCC_ENABLE
+  // For Pinoccio Scout boards
+  pinMode(VCC_ENABLE, OUTPUT);
+  digitalWrite(VCC_ENABLE, HIGH);
+  delay(1000);
+#endif
+
+  // LMIC init
+  os_init();
+  // Reset the MAC state. Session and pending data transfers will be discarded.
+  LMIC_reset();
+
+  // Set static session parameters. Instead of dynamically establishing a session
+  // by joining the network, precomputed session parameters are be provided.
+#ifdef PROGMEM
+  // On AVR, these values are stored in flash and only copied to RAM
+  // once. Copy them to a temporary buffer here, LMIC_setSession will
+  // copy them into a buffer of its own again.
+  uint8_t appskey[sizeof(APPSKEY)];
+  uint8_t nwkskey[sizeof(NWKSKEY)];
+  memcpy_P(appskey, APPSKEY, sizeof(APPSKEY));
+  memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
+  LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
+#else
+  // If not running an AVR with PROGMEM, just use the arrays directly
+  LMIC_setSession (0x1, DEVADDR, NWKSKEY, APPSKEY);
+#endif
+
+#if defined(CFG_eu868)
+  // Set up the channels used by the Things Network, which corresponds
+  // to the defaults of most gateways. Without this, only three base
+  // channels from the LoRaWAN specification are used, which certainly
+  // works, so it is good for debugging, but can overload those
+  // frequencies, so be sure to configure the full frequency range of
+  // your network here (unless your network autoconfigures them).
+  // Setting up channels should happen after LMIC_setSession, as that
+  // configures the minimal channel set.
+  // NA-US channels 0-71 are configured automatically
+  
+  LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
+  LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
+
+  //LMIC_disableChannel(0); //Send only at channel 0
+  LMIC_disableChannel(1);
+  LMIC_disableChannel(2);
+  LMIC_disableChannel(3);
+  LMIC_disableChannel(4);
+  LMIC_disableChannel(5);
+  LMIC_disableChannel(6);
+  LMIC_disableChannel(7);
+  LMIC_disableChannel(8);
+  
+  // TTN defines an additional channel at 869.525Mhz using SF9 for class B
+  // devices' ping slots. LMIC does not have an easy way to define set this
+  // frequency and support for class B is spotty and untested, so this
+  // frequency is not configured here.
+#elif defined(CFG_us915)
+  // NA-US channels 0-71 are configured automatically
+  // but only one group of 8 should (a subband) should be active
+  // TTN recommends the second sub band, 1 in a zero based count.
+  // https://github.com/TheThingsNetwork/gateway-conf/blob/master/US-global_conf.json
+  LMIC_selectSubBand(1);
+#endif
+
+  // Disable link check validation
+  LMIC_setLinkCheckMode(0);
+
+  // TTN uses SF9 for its RX2 window.
+  LMIC.dn2Dr = DR_SF9;
+
+  // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
+  LMIC_setDrTxpow(DR_SF7, 14);
+
+  // Start job
+  do_send(&sendjob);
+}
+
+/* void setup() {
+	Serial.begin(115200);
+	delay(1000);
+	WiFi.disconnect();
+	// -> Display initialisierung
+	pinMode(OLED_RST, OUTPUT);
+	digitalWrite(OLED_RST, LOW);
+	delay(20);
+	digitalWrite(OLED_RST, HIGH);
+	Wire.begin(OLED_SDA, OLED_SCL);
+	//Displayinitialisierung ENDE <-
+
+	//Prüfung ob Display vorhanden
+	if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
+		//setz der Variable displayAvailable auf false
+		Serial.println("init -> kein LCD vorhanden.");
+	} else {
+		display.clearDisplay();
+		display.drawBitmap(20,0, lcdlogo, 91,64, WHITE);
+		display.display();
+	}
+	
+	//ermitteln der ChipId
+	for(int i=0; i< 17; i=i+8) {
+		chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+	}
+	mySSID = std::move(String(DEFAULT_AP_START) + "-" + String(chipId));
+
+	Serial.printf("ESP32 Chip Model = %s Rev %d\n", ESP.getChipModel(), ESP.getChipRevision());
+	Serial.printf("Dieser Chip hat %d Kerne\n", ESP.getChipCores());
+  	Serial.print("Chip ID: "); Serial.println(chipId);
+  	
+	if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+		Serial.println("init -> SPIFF Mounting Fehler! System stopped.");
+		for(;;);
+	}
+
+	Serial.println("init -> SPIFF gemountet.");		
+	delay(5000);
+
+	//Pins für LoRa definieren und Kommunikation starten
+	SPI.begin(SCK, MISO, MOSI, SS);
+	LoRa.setPins(SS, RST, DIO0);
+	if(!LoRa.begin(BAND)){
+		Serial.println("init -> LoRa nicht verfügbar...");
+		loraAvailable = false;
+	} else{
+
+		int rssi = LoRa.rssi();
+		Serial.print("init -> LoRa RSSI=");
+		Serial.print(rssi);
+		Serial.println("dBm.");
+		loraAvailable = true;
+	}
+
+	//Lesen der Konfiguration
+	if(!readConfig()){
+		// MCU in den Konfigmodus setzen
+		Serial.println("System wurde noch nicht konfiguriert.");
+		setAPMode();
+	} else {
+		if((!config["lora"]["enabled"] || !loraAvailable ) && config["wifi"]["ssid"] == ""){
+			//MCU in den KonfigModus setzen
+			setAPMode();
+		}
+		else {
+			if(!checkWiFi(config["wifi"]["ssid"], config["wifi"]["password"])){
+				Serial.print("Fehler bei der der Verbindung zu ");
+				Serial.println(config["wifi"]["ssid"].as<const char*>());
+				setAPMode();
+			}
+  			else {
+				if(config["lora"]["enabled"] == true) {
+					if(config["data_setup"]["preferred"] == "lora"){
+
+					} else if(config["data_setup"]["preferred"] == "lora_then_wlan") {
+
+					} else {
+						setAPMode();
+					}					
+				}
+				else {
+
+				}
+			}  			
+		}		
+	}
+}
+ */
+void loop() {
+  // put your main code here, to run repeatedly:
+  
+//   int packetSize = LoRa.parsePacket();
+//   if (packetSize) {
+//     Serial.println("Receive LoRa Packet...");
+//     getLoraData();
+//   }
+	os_runloop_once();
+}
+
+void onEvent (ev_t ev) {
+  Serial.print(os_getTime());
+  Serial.print(": ");
+  switch (ev) {
+    case EV_SCAN_TIMEOUT:
+      Serial.println(F("EV_SCAN_TIMEOUT"));
+      break;
+    case EV_BEACON_FOUND:
+      Serial.println(F("EV_BEACON_FOUND"));
+      break;
+    case EV_BEACON_MISSED:
+      Serial.println(F("EV_BEACON_MISSED"));
+      break;
+    case EV_BEACON_TRACKED:
+      Serial.println(F("EV_BEACON_TRACKED"));
+      break;
+    case EV_JOINING:
+      Serial.println(F("EV_JOINING"));
+      break;
+    case EV_JOINED:
+      Serial.println(F("EV_JOINED"));
+      break;
+    case EV_RFU1:
+      Serial.println(F("EV_RFU1"));
+      break;
+    case EV_JOIN_FAILED:
+      Serial.println(F("EV_JOIN_FAILED"));
+      break;
+    case EV_REJOIN_FAILED:
+      Serial.println(F("EV_REJOIN_FAILED"));
+      break;
+    case EV_TXCOMPLETE:
+      Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
+      if (LMIC.txrxFlags & TXRX_ACK)
+        Serial.println(F("Received ack"));
+      if (LMIC.dataLen) {
+        Serial.println(F("Received "));
+        Serial.println(LMIC.dataLen);
+        Serial.println(F(" bytes of payload"));
+      }
+      // Schedule next transmission
+      os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(TX_INTERVAL), do_send);
+      break;
+    case EV_LOST_TSYNC:
+      Serial.println(F("EV_LOST_TSYNC"));
+      break;
+    case EV_RESET:
+      Serial.println(F("EV_RESET"));
+      break;
+    case EV_RXCOMPLETE:
+      // data received in ping slot
+      Serial.println(F("EV_RXCOMPLETE"));
+      break;
+    case EV_LINK_DEAD:
+      Serial.println(F("EV_LINK_DEAD"));
+      break;
+    case EV_LINK_ALIVE:
+      Serial.println(F("EV_LINK_ALIVE"));
+      break;
+    default:
+      Serial.println(F("Unknown event"));
+      break;
+  }
+}
+
+bool checkWiFi(String ssid, String password){
+	int c = 0;
+	Serial.println("Warte auf WiFi Verbindung...");
+	display.clearDisplay();
+	display.setTextSize(1);      // Normal 1:1 pixel scale
+  	display.setTextColor(WHITE);
+	display.setCursor(0,0);
+	display.println("Verbinde zu WLAN....");
+	WiFi.begin(ssid, password);
+	int x=0;
+	while (c < 20)
+	{
+		if(WiFi.status() == WL_CONNECTED){
+			return true;
+		}
+		delay(500);
+		Serial.print("*");
+		display.setCursor(x,10);
+		display.print("*");
+		display.display();
+		c++;
+		x +=7;
+	}
+	Serial.println("");
+	Serial.println("Verbindungstimeout. Starte Accesspoint");
+	return false;
+}
+
+void setAPMode(){
+
+	Serial.println("starte AccessPoint...");
+	WiFi.mode(WIFI_STA);
+	WiFi.softAP(mySSID,"");
+	Serial.print("Meine SSID lautet: ");
+	Serial.println(mySSID);
+	display.clearDisplay();
+	display.setTextSize(1);      // Normal 1:1 pixel scale
+  	display.setTextColor(WHITE);
+  	display.setCursor(90,0);
+	display.print("AP");
+	display.setCursor(5,20);
+	display.print("ACCESSPOINT MODUS");
+	display.setCursor(5,40);
+	display.print(mySSID);
+	display.display();
+	setupLAN();
+}
+void setLoraMode(bool wlansend){
+
+}
+void setWlanMode(){
+
+}
+String htmlProcessor(const String& var) {
+	Serial.println(var);
+	if(var == "LORAAVAILABLE"){	
+		String av = "false";	
+		if(loraAvailable == true) {
+			av = "true";
+		}
+		return av;
+	}
+	if(var == "CHIPID") {
+		String av = "UNBEKANNT";
+		av = mySSID;
+		return av;
+	}
+	return String();		
+}
+
+void setupLAN() {
+	server.serveStatic("/",SPIFFS,"/www/");
+	server.on("/", HTTP_GET , [](AsyncWebServerRequest *request) {
+		request->send(SPIFFS, "/index_setup.html" , String(), false, htmlProcessor);
+	});
+	server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/styles.css", "text/css");
+	});
+	server.on("/logo-buergernetzgeragreiz.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/logo-buergernetzgeragreiz.png", "image/png");
+	});
+	server.on("/nav_bg.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+	//AJAX Functionen
+	server.on("/scan_wifi", HTTP_GET, [](AsyncWebServerRequest *request) {
+		String json = "[";
+		int n = WiFi.scanComplete();
+		if(n == -2){
+		WiFi.scanNetworks(true);
+		} else if(n){
+		for (int i = 0; i < n; ++i){
+			if(i) json += ",";
+			json += "{";
+			json += "\"rssi\":"+String(WiFi.RSSI(i));
+			json += ",\"ssid\":\""+WiFi.SSID(i)+"\"";
+			json += ",\"bssid\":\""+WiFi.BSSIDstr(i)+"\"";
+			json += ",\"channel\":"+String(WiFi.channel(i));
+			json += ",\"secure\":"+String(WiFi.encryptionType(i));			
+			json += "}";
+		}
+			WiFi.scanDelete();
+			if(WiFi.scanComplete() == -2){
+				WiFi.scanNetworks(true);
+			}
+		}
+		json += "]";
+		request->send(200, "application/json", json);
+		json = String();	
+  	});
+	
+	AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/test_wifi", [](AsyncWebServerRequest *request, JsonVariant &json) {
+		StaticJsonDocument<512> data;
+		if (json.is<JsonArray>())
+		{
+			data = json.as<JsonArray>();
+		}
+		else if (json.is<JsonObject>())
+		{
+			data = json.as<JsonObject>();
+		}
+		String response;
+		serializeJson(data, response);
+		request->send(200, "application/json", response);
+		Serial.println(response);
+	});
+	server.addHandler(handler);
+	//<- ENDE AXAX Funktionen
+	server.begin();
+}
+
+void getLoraData(){
+	while (LoRa.available())
+	{
+		String loraData = LoRa.readString();
+		Serial.println(loraData);
+	}
+	int rssi = LoRa.packetRssi();
+	Serial.print("RSSI: ");
+	Serial.println(rssi);
+}
+
+bool readConfig(){
+	String file_content = readFile(SPIFFS);
+
+	int config_file_size = file_content.length();
+	if(config_file_size > 512){
+		Serial.println("config -> Datei zu groß!" );
+		auto error = deserializeJson(config, esp_default_config);
+		if(error) {
+			Serial.println("Fehler beim laden der Werkseinstellungen!");
+			return false;
+		}
+		return true;
+	}
+
+	auto error = deserializeJson(config, file_content);
+	if(error){
+		Serial.println("config -> Fehler beim lesen der Konfig!");
+		auto error = deserializeJson(config, esp_default_config);
+		if(error){
+			Serial.println("Fehler beim laden der Werkseinstellungen!");
+			return false;
+		}
+	}
+	return true;
+}
+
+bool saveConfig(){
+	String content = "";
+	serializeJson(config, content);
+	writeFile(SPIFFS, content);
+	return true;
+}
+
+String readFile(fs::FS &fs){
+	Serial.print("config -> lese Konfigurationsdatei... ");
+	File file = fs.open("/config.json");
+	if(!file || file.isDirectory()){
+		Serial.println(" [nicht vorhanden]");		
+		return "";
+	}
+
+	String fileText = "";
+	while (file.available())
+	{
+		fileText = file.readString();
+	}
+	file.close();
+
+	return fileText;
+}
+
+void writeFile(fs::FS &fs, String content) {
+	Serial.println("config -> schreibe Konfigdatei...");
+
+	File file = fs.open("/config.json", FILE_WRITE);
+	if(!file){
+		Serial.println("config -> Fehler beim schreiben der config!");
+		return;
+	}
+
+	if(file.print(content)){
+		Serial.println("config -> Konfiguration erfolgreich gespeichert.");
+	} else{
+		Serial.println("config -> Fehler beim schreiben der Konfiguration!");
+	}
+	file.close();
+}
