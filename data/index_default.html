@@ -4,8 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
     <title>LoRa ESP32</title>
-    
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+    <style>
+        #map {
+            height: 180px;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand navbar-light bg-light">
@@ -44,6 +55,34 @@
             </div>
         </div>
         <div class="row gx-4 gx-lg-5" id="pDashboerd">
+            <div class="col-lg-4 col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Feinstaubdaten</h4>
+                        <h6 class="card-subtitle">Anzeige der letzten 10 Messungen</h6>
+                        <canvas id="fsdaten"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Temperaturdaten</h4>
+                        <h6 class="card-subtitle">Anzeige der letzten 10 Messungen</h6>
+                        <canvas id="tempdaten"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Standort deines Sensors</h4>
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row gx-4 gx-lg-5" id="pConnections">
             <div class="col-md-6 mb-5">
                 <div class="card h-100" id="wlansetup">
                     <div class="card-body">
@@ -60,6 +99,7 @@
                         <div class="mb-3">
                             <label>SSID</label>
                             <select class="form-control" id="ssid" name="ssid">
+                                %WIFILIST%
                             </select>
                         </div>
                         <div class="mb-4">
@@ -147,9 +187,6 @@
                 </div>                
             </div>
         </div>
-        <div class="row gx-4 gx-lg-5" id="pConnections">
-
-        </div>
         <div class="row gx-4 gx-lg-5" id="pSensors">
 
         </div>
@@ -157,8 +194,7 @@
     <footer class="py-5 footer-light">
 
     </footer>
-    <script>
-        
+    <script>        
         var loraAvailable = true;//%LORAAVAILABLE%;
         var useLora = false;
         var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
@@ -197,6 +233,7 @@
             xhttp.open("GET", "/scan_wifi", true);
             xhttp.send();
 
+            loadMapData();
         });
         document.getElementById("enableWlan").addEventListener('click', function(e){
             var wlanNodes = document.getElementById("wlansetup").getElementsByTagName("*");
@@ -253,6 +290,19 @@
             document.getElementById("pDashboerd").style.display = "flex"
             document.getElementById("pConnections").style.display = "none"
             document.getElementById("pSensors").style.display = "none"
+        }
+        function loadMapData() {
+            var map = L.map('map').setView([50.844276, 12.0694576],13);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            var circle = L.circle([50.844276, 12.0694576], {
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.5,
+                radius: 100
+            }).addTo(map);
         }
     </script>
     <div class="modal" id="systemRestart">
