@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <lmic.h>
+#include <hal\hal.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -10,8 +12,7 @@
 #include <ArduinoJson.h>
 
 #include <AsyncTCP.h>
-#include <lmic.h>
-#include <hal\hal.h>
+
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "DHTesp.h"
@@ -288,14 +289,14 @@ void loadLora(){
   LMIC_setLinkCheckMode(0);
 
   // TTN uses SF9 for its RX2 window.
-  LMIC.dn2Dr = DR_SF9;
+
 
   // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
   LMIC_setDrTxpow(DR_SF7, 14);
 
   // Start job
   do_send(&sendjob);
-
+  LMIC.dn2Dr = DR_SF9;
   loraInitialized = true;
 }
 void setAPMode(){
@@ -526,7 +527,7 @@ void setup(){
     WiFi.disconnect();
     SPI.begin(SCK, MISO, MOSI, SS);
     Serial.println("Starte System....");
-loadLora();
+
     // -> Display initialisierung
 	pinMode(OLED_RST, OUTPUT);
 	digitalWrite(OLED_RST, LOW);
@@ -581,6 +582,7 @@ loadLora();
         setAPMode();
     }
     launchWebserver();
+    loadLora();
 }
 
 void loop() {
@@ -651,8 +653,12 @@ void onEvent (ev_t ev) {
     case EV_LINK_ALIVE:
       Serial.println(F("EV_LINK_ALIVE"));
       break;
+      case EV_TXSTART:
+        Serial.println(F("EV_TXSTART"));
+      break;
     default:
-      Serial.println(F("Unknown event"));
+      Serial.print(F("Unknown event "));
+      Serial.println(ev);
       break;
   }
 }
