@@ -4,15 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="toastr.min.css" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico" />
     <title>LoRa ESP32</title>
-    
+    <script src="jquery.js"></script>
+    <script src="bootstrap.bundle.min.js"></script>
+    <script src="chart.js"></script>
+    <script src="toastr.min.js"></script>
 </head>
 <body>
+    <div class="preloader">
+        <div class="loader">
+            <div class="loader-outter"></div>
+            <div class="loader-inner"></div>
+    
+            <div class="indicator"> 
+                <svg width="16px" height="12px">
+                    <polyline id="back" points="1 6 4 6 6 11 10 1 12 6 15 6"></polyline>
+                    <polyline id="front" points="1 6 4 6 6 11 10 1 12 6 15 6"></polyline>
+                </svg>
+            </div>
+        </div>
+    </div>
     <nav class="navbar navbar-expand navbar-light bg-light">
         <div class="container px-5">
             <a class="navbar-brand" href="javascript:void(0)">Setup %CHIPID%</a>
             <div class="collapse navbar-collapse">
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0" id="nmenu">
                     <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="javascript:void(0)" id="lnkHome" onclick="showDasboard()">Dashboard</a>
                     </li>
@@ -29,7 +47,7 @@
     <div class="container px-4 px-lg-5">
         <div class="row gx-4 gx-lg-5 align-items-center my-5">
             <div class="col-lg-4">
-                <img class="img-fluid rounded mb-4 mb-lg-0" src="logo-buergernetzgeragreiz.png" alt="logo">
+                <img class="img-fluid rounded mb-4 mb-lg-0" src="logo-buergernetzgeragreiz.png" alt="logo" id="lgimg">
             </div>
             <div class="col-lg-8">
                 <h1 class="font-weight-light">Bürgernetz Gera-Greiz Feinstaubsensor</h1>
@@ -43,7 +61,7 @@
                 </p>
             </div>
         </div>
-        <div class="row gx-4 gx-lg-5" id="pDashboerd">
+        <div class="row gx-4 gx-lg-5" id="pConnections">
             <div class="col-md-6 mb-5">
                 <div class="card h-100" id="wlansetup">
                     <div class="card-body">
@@ -85,6 +103,10 @@
                             <label for="useLora">LoRaWAN verwenden</label>
                         </div>
                         <div class="mb-3">
+                            <label for="devid">Device ID</label>
+                            <input id="devid" name="devid" class="form-control" placeholder="eui-0000000000000000" />
+                        </div>
+                        <div class="mb-3">
                             <label for="nwkskey">NwkSKey<span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="nwkskey" name="nwkskey" placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
                             <div class="help-block">
@@ -101,47 +123,6 @@
                             <label for="devaddr">DevAddr</label>
                             <input type="text" class="form-control" id="devaddr" name="devaddr" placeholder="00 00 00 00"/>
                         </div>
-                        <div class="mb-3">
-                            <p>Sollte der Gateyway ein Single-Gateway sein, so ist hier nur der festeingestellte Kanal 1 zu verwenden.
-                                Die übrigen Kanäle sind zu deaktivieren.
-                            </p>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <input type="checkbox" id="channel1" class="form-check-input" disabled checked/>
-                                    <label>Kanal 1</label>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 2</label>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 3</label>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 4</label>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 5</label>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 6</label>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 7</label>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="checkbox" class="form-check-input"  checked/>
-                                    <label>Kanal 8</label>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     <div class="card-footer">
                         <div class="mt-3 mt-md-0 ms-auto">
@@ -151,8 +132,104 @@
                 </div>                
             </div>
         </div>
-        <div class="row gx-4 gx-lg-5" id="pConnections">
-
+        <div class="row gx-4 gx-lg-5" id="pDashboerd">
+            <div class="col-lg-6 col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Feinstaubdaten</h4>
+                        <h6 class="card-subtitle">Anzeige der letzten 10 Messungen</h6>
+                        <canvas id="fsdaten"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Temperaturdaten</h4>
+                        <h6 class="card-subtitle">Anzeige der letzten 10 Messungen</h6>
+                        <canvas id="tempdaten"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h4 class="card-title">ESP32</h4>
+                        <table class="table mt-3 table-borderless v-middle">
+                            <tbody>
+                                <tr>
+                                    <td class="ps-0">Model:</td>
+                                    <td class="ps-0 text-end">%CHIPMODEL% Rev. %CHIPREV%</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Chip-Id:</td>
+                                    <td class="ps-0 text-end">%RAWCHIPID%</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">CPU:</td>
+                                    <td class="ps-0 text-end">%CORES% Kerne @ %MHZ%Mhz</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Flash:</td>
+                                    <td class="ps-0 text-end" id="fszize"></td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Heap</td>
+                                    <td class="ps-0 text-end" id="freeheap"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h4 class="card-title">WLAN</h4>
+                        <table class="table mt-3 table-borderless v-middle">
+                            <tbody>
+                                <tr>
+                                    <td class="ps-0">Status:</td>
+                                    <td class="ps-0 text-end">AccessPoint</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">SSID:</td>
+                                    <td class="ps-0 text-end">%SSID%</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">IP:</td>
+                                    <td class="ps-0 text-end">%MYIP%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h4 class="card-title">LoRaWAN</h4>
+                        <table class="table mt-3 table-borderless v-midle">
+                            <tr>
+                               <td class="ps-0">Device ID:</td> 
+                               <td class="ps-0 text-end">%DEVID%</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Intervall:</td>
+                                <td class="ps-0 text-end">%INTERVAL% Sek.</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">letzt. Payload:</td>
+                                <td class="ps-0 text-end">%LASTPAYLOAD%</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12 mb-3">
+                <button class="btn btn-primary" onclick="setFactoryDefault()">Werkseinstellungen</button>
+            </div>
         </div>
         <div class="row gx-4 gx-lg-5" id="pSensors">
 
@@ -161,133 +238,20 @@
     <footer class="py-5 footer-light">
 
     </footer>
-    <script>
-        
-        var loraAvailable = true;//%LORAAVAILABLE%;
-        var useLora = false;
-        var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
-        document.addEventListener("DOMContentLoaded", () => {
-            //Beim start immer die DashbordDiv aktivieren, den rest disablen
-            showDasboard();
-            if(!loraAvailable){
-                document.getElementById("ltitle").innerHTML = loraText;
-                var loraNodes = document.getElementById('loraSetup').getElementsByTagName('*');
-                for(var i = 0; i < loraNodes.length; i++){
-                    loraNodes[i].disabled = true;
-                }
-                document.getElementById("useLora").checked = true;
-            }
-            else {
-                loraText = "Bei Unsicherheit bei diesen Einstellungen wende dich bitte an die Mitglieder des Bürgernetz Gera-Greiz e.V";
-                document.getElementById("ltitle").innerHTML = loraText;
-                var loraNodes = document.getElementById('loraSetup').getElementsByTagName('*');
-                for(var i = 0; i < loraNodes.length; i++){
-                    loraNodes[i].disabled = false;
-                }
-                document.getElementById("channel1").disabled = true;
-            }
-            
-
-        });
-        document.getElementById("enableWlan").addEventListener('click', function(e){
-            var wlanNodes = document.getElementById("wlansetup").getElementsByTagName("*");
-            for(var i = 0; i < wlanNodes.length; i++) {
-                if(document.getElementById("enableWlan").checked){
-                    wlanNodes[i].disabled = false;
-                }
-                else {
-                    wlanNodes[i].disabled = true;
-                    document.getElementById("enableWlan").disabled = false;
-                    document.getElementById("savewlan").disabled = false;
-                }
-            }
-        });
-        document.getElementById("useLora").addEventListener('click', function(e) {
-            var loraNodes = document.getElementById('loraSetup').getElementsByTagName('*');
-                for(var i = 0; i < loraNodes.length; i++){
-                    if(document.getElementById("useLora").checked) {
-                        loraNodes[i].disabled = false;
-                    }
-                    else {
-                        loraNodes[i].disabled = true;
-                        document.getElementById("useLora").disabled = false;
-                    }                    
-                }
-                document.getElementById("channel1").disabled = true;
-                
-        });
-        document.getElementById("loracheck").addEventListener('click', function(e) {
-            let nkey = document.getElementById("nwkskey").value.match(/.{1,2}/g) ?? [];
-            let akey = document.getElementById("appskey").value.match(/.{1,2}/g) ?? [];
-            let did = document.getElementById("devaddr").value;
-
-           if(nkey.length != 16){
-
-           }
-           if(akey.length != 16){
-
-           }
-           let akeyint = [];
-           let nkeyInt=[];
-           let devkey = hex2num(did);
-           for(var i=0; i < nkey.length; i++){
-                nkeyInt[i] = hex2num(nkey[i]);
-           }
-
-           for(var i= 0; i < akey.length; i++){
-            akeyint[i] = hex2num(akey[i]);
-           }
-
-           let json = {
-                nwkey: nkeyInt,
-                apkey: akeyint,
-                devkey: devkey
-           };
-           var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function(){
-                console.log(this.responseText);
-            }
-            xhttp.open("Post","/test_lora", true);
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            xhttp.send(JSON.stringify(json));
-        });
-        function checkwifi(){
-            let ssid = document.getElementById("ssid").value;
-            let pasw = document.getElementById("ssidpasw").value;
-            let json = {
-                ssid: ssid,
-                pasw: pasw,
-                enabled : document.getElementById("enableWlan").checked
-            };
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function(){
-                console.log(this.responseText);
-            }
-            xhttp.open("Post","/test_wifi", true);
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            xhttp.send(JSON.stringify(json));
-        }
-        function showConnections(){
-            document.getElementById("pDashboerd").style.display = "none"
-            document.getElementById("pConnections").style.display = "flex"
-            document.getElementById("pSensors").style.display = "none"
-        }
-        function showSensors() {
-            document.getElementById("pDashboerd").style.display = "none"
-            document.getElementById("pConnections").style.display = "none"
-            document.getElementById("pSensors").style.display = "flex"           
-        }
-        function showDasboard(){
-            document.getElementById("pDashboerd").style.display = "flex"
-            document.getElementById("pConnections").style.display = "none"
-            document.getElementById("pSensors").style.display = "none"
-        }
-        function hex2num(hexcode){ return Number(  '0x' + hexcode.split(/[^0-9a-fA-F]+/).join('')  ) }
-</script>
-    <div class="modal" id="systemRestart">
-        <div class="modal-content">
-            
+    <div class="modal fade" id="restartmodal" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header d-flex align-items-center">
+                    <h4 class="modal-title">Systemneustart</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Damit deine Änderung am System wirksam werden, muss dein System neu gestartet werden.
+                        Bitte warte bis der Vorgang abgeschlossen ist. Die Seite sollte sich dann automatisch wieder öffnen.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
+    <script src="system.js"></script>
 </body>
 </html>

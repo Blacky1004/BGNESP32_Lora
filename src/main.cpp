@@ -10,9 +10,7 @@
 #include "ESPAsyncWebServer.h"
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
-
 #include <AsyncTCP.h>
-
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "DHTesp.h"
@@ -27,13 +25,12 @@
 
 #define KONFIG_MODE 0
 #define WLAN_MODE 2
-#define LORA_MODE 4
+
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 #define FORMAT_SPIFFS_IF_FAILED true
-
 #define DEFAULT_AP_START "BNG" 
 
 AsyncWebServer server(80);
@@ -43,6 +40,8 @@ String mySSID ="";
 
 uint32_t chipId = 0;
 bool loraAvailable = false;
+bool wlanAvailable = false;
+bool expertMode = false;
 uint8_t aktualKonfigMode = KONFIG_MODE;
 
 //LoRa TTN Device-Daten
@@ -76,7 +75,7 @@ const lmic_pinmap lmic_pins = { // Pins des TTGO ESP32 LoRa Board
   .dio = {26, 33, LMIC_UNUSED_PIN},
 };
 //LCD Screen
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RST);
 
 //-> Defaultkonfiguration
 const char esp_default_config[] PROGMEM = R"rawliteral(
@@ -92,18 +91,11 @@ const char esp_default_config[] PROGMEM = R"rawliteral(
 		"height": 0
 	},
 	"lora":{
-		"enabled": false,
-		"c0": true,
-		"c1": true,
-		"c2": true,
-		"c3": true,
-		"c4": true,
-		"c5": true,
-		"c6": true,
-		"c7": true,
-        "newskey":[],
-        "appskey":[],
-        "devid":"260B19DF"
+		"enabled": false,		
+        "newskey":null,
+        "appskey":null,
+        "devid": "",
+        "devaddr":"260B19DF"
 	},
 	"data_setup":{
 		"preferred":"lora_and_wlan"
@@ -125,11 +117,15 @@ const char esp_default_lora_payload[] PROGMEM = R"rawliteral(
         }
     }
 )rawliteral";
-bool loraInitialized = false;
-StaticJsonDocument<512> config;
-StaticJsonDocument<255> jsonPayload;
-//<- Ende Defaultkonfiguration
+String sensorResultDatas = "{\"pm10\": [], \"pm25\":[], \"tmp\":[]}";
 
+bool loraInitialized = false;
+DynamicJsonDocument config(1024);
+StaticJsonDocument<512> jsonPayload;
+
+//<- Ende Defaultkonfiguration
+unsigned long lastTime = 0;
+unsigned long timerDelay = 60000;
 //-> Flashdaten
 const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -211,6 +207,34 @@ int hex2int(char *s)
   }
   return x;
 }
+String IpAddress2String(const IPAddress& ipAddress)
+{
+    return String(ipAddress[0]) + String(".") +
+           String(ipAddress[1]) + String(".") +
+           String(ipAddress[2]) + String(".") +
+           String(ipAddress[3]);
+}
+void sortPm25Data(float newValue) {
+    for(int i = 0; i < 9; i++){
+        pm25Datas[i] = pm25Datas[i+1];
+    }
+    pm25Datas[9] = newValue;
+}
+
+void sortPm10Data(float newValue) {
+    for(int i = 0; i < 9; i++){
+        pm10Datas[i] = pm10Datas[i+1];
+    }
+    pm10Datas[9] = newValue;
+}
+
+void sortTmpData(float newValue) {
+    for(int i = 0; i < 9; i++){
+        tempDatas[i] = tempDatas[i+1];
+    }
+    tempDatas[9] = newValue;
+}
+
 void generateWifiList() {
     wiFiListe = "<option value=\"null\">-- Auswahl --</option>";
     String selected ="";
@@ -224,6 +248,7 @@ void generateWifiList() {
         }        
     }
 }
+
 void do_send(osjob_t* j) {
   // Check if there is not a current TX/RX job running
   if (LMIC.opmode & OP_TXRXPEND) {
@@ -237,6 +262,7 @@ void do_send(osjob_t* j) {
   }
   // Next TX is scheduled after TX_COMPLETE event.
 }
+
 void loadLora(){
     #ifdef VCC_ENABLE
     // For Pinoccio Scout boards
@@ -286,9 +312,9 @@ void loadLora(){
   LMIC_disableChannel(8);
 
   // Disable link check validation
-  LMIC_setLinkCheckMode(0);
+  //LMIC_setLinkCheckMode(0);
 
-  // TTN uses SF9 for its RX2 window.
+
 
 
   // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
@@ -296,9 +322,13 @@ void loadLora(){
 
   // Start job
   do_send(&sendjob);
+  
+  // TTN uses SF9 for its RX2 window.
   LMIC.dn2Dr = DR_SF9;
   loraInitialized = true;
+  loraAvailable = true;
 }
+
 void setAPMode(){
 
 	Serial.println("starte AccessPoint...");
@@ -317,6 +347,49 @@ void setAPMode(){
 	display.print(mySSID);
 	display.display();
 }
+
+String readFile(fs::FS &fs){
+	Serial.print("config -> lese Konfigurationsdatei... ");
+	File file = fs.open("/config.json");
+	if(!file || file.isDirectory()){
+		Serial.println(" [nicht vorhanden]");	
+        Serial.println("config -> erzeuge neue Datei...");
+        	
+        writeFile(fs, String(esp_default_config));
+		return String(esp_default_config);
+	}
+    else {
+        Serial.println("[OK]");
+    }
+
+	String fileText = "";
+	while (file.available())
+	{
+		fileText = file.readString();
+	}
+	file.close();
+
+    Serial.println(fileText);
+	return fileText;
+}
+
+void writeFile(fs::FS &fs, String content) {
+	Serial.println("config -> schreibe Konfigdatei...");
+
+	File file = fs.open("/config.json", FILE_WRITE);
+	if(!file){
+		Serial.println("config -> Fehler beim schreiben der Konfiguration!");
+		return;
+	}
+
+	if(file.print(content)){
+		Serial.println("config -> Konfiguration erfolgreich gespeichert.");
+	} else{
+		Serial.println("config -> Fehler beim schreiben der Konfiguration!");
+	}
+	file.close();
+}
+
 bool readConfig(){
 	String file_content = readFile(SPIFFS);
 
@@ -325,7 +398,7 @@ bool readConfig(){
 		Serial.println("config -> Datei zu groß!" );
 		auto error = deserializeJson(config, esp_default_config);
 		if(error) {
-			Serial.println("Fehler beim laden der Werkseinstellungen!");
+			Serial.println("config -> Fehler beim laden der Werkseinstellungen!");
 			return false;
 		}
 		return true;
@@ -336,7 +409,7 @@ bool readConfig(){
 		Serial.println("config -> Fehler beim lesen der Konfig!");
 		auto error = deserializeJson(config, esp_default_config);
 		if(error){
-			Serial.println("Fehler beim laden der Werkseinstellungen!");
+			Serial.println("config -> Fehler beim laden der Werkseinstellungen!");
 			return false;
 		}
 	}
@@ -349,42 +422,6 @@ bool saveConfig(){
 	writeFile(SPIFFS, content);
 	return true;
 }
-
-String readFile(fs::FS &fs){
-	Serial.print("config -> lese Konfigurationsdatei... ");
-	File file = fs.open("/config.json");
-	if(!file || file.isDirectory()){
-		Serial.println(" [nicht vorhanden]");		
-		return "";
-	}
-
-	String fileText = "";
-	while (file.available())
-	{
-		fileText = file.readString();
-	}
-	file.close();
-
-	return fileText;
-}
-
-void writeFile(fs::FS &fs, String content) {
-	Serial.println("config -> schreibe Konfigdatei...");
-
-	File file = fs.open("/config.json", FILE_WRITE);
-	if(!file){
-		Serial.println("config -> Fehler beim schreiben der config!");
-		return;
-	}
-
-	if(file.print(content)){
-		Serial.println("config -> Konfiguration erfolgreich gespeichert.");
-	} else{
-		Serial.println("config -> Fehler beim schreiben der Konfiguration!");
-	}
-	file.close();
-}
-
 
 bool checkWiFi() {
     if(config["wifi"]["ssid"] != ""){
@@ -407,10 +444,40 @@ bool checkWiFi() {
         }
         Serial.println("Verbindungstimeout. Starte AaccessPoint.");
         Serial.println("");
-    }
+    }    
     return false;
 }
 
+void scanHardware(){
+    byte error, address;
+    int nDevices = 0;
+    for(address = 1; address < 127; address++){
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+        if(error == 0) {
+            Serial.print("scan -> Sensor gefunden bei Adresse 0x");
+            if(address < 16) {
+                Serial.print("0");
+            }
+            Serial.println(address, HEX);
+            nDevices++;
+        }
+        else if ( error == 4)
+        {
+            Serial.print("scan -> Unbekannter Fehler bei Adresse 0x");
+            if(address < 16) {
+                Serial.print("0");
+            }
+            Serial.println(address, HEX);
+        }
+    }
+    if(nDevices == 0) {
+        Serial.println("scan -> Keine unterstützten I2C Sensoren gefunden.");
+    }
+    else{
+        Serial.println("scan -> Scan abgeschlossen.");
+    }
+}
 
 String htmlProcessor(const String& var) {
 	Serial.println(var);
@@ -429,8 +496,72 @@ String htmlProcessor(const String& var) {
     if(var == "WIFILIST"){
         return wiFiListe;
     }
-	return String();		
+    if(var == "CHIPMODEL") {
+        return ESP.getChipModel();
+    }
+    if(var == "CHIPREV") {
+        return String(ESP.getChipRevision());
+    }
+    if(var == "CORES") {
+        return String(ESP.getChipCores());
+    }
+    if(var == "MHZ"){
+        return String(ESP.getCpuFreqMHz());
+    }
+    if(var == "RAWCHIPID"){
+        return String(chipId);
+    }
+    if(var == "FREEHEAP") {
+        return String(ESP.getFreeHeap());
+    }
+    if(var == "HEAP"){
+        return String(ESP.getHeapSize());
+    }
+    if(var == "FLASHZIZE") {
+        return String(ESP.getFlashChipSize());
+    }
+    if(var == "WIFISTATUS") {
+        if (aktualKonfigMode == KONFIG_MODE)
+        {
+            return "AccessPoint";
+        }
+        else{
+            return "WLAN-Verbindung";
+        }        
+    }
+    if(var == "SSID") {
+        if(aktualKonfigMode == KONFIG_MODE){
+            return mySSID;
+        }
+        else{
+            return WiFi.SSID();
+        }
+    }
+    if(var == "MYIP") {
+        if(aktualKonfigMode == KONFIG_MODE){
+            return String(IpAddress2String(WiFi.softAPIP()));
+        }
+        else {
+            return String(IpAddress2String(WiFi.localIP()));
+        }
+    }
+    if(var == "EXPERTMODE") {
+        if(expertMode) {
+            return "true";
+        }
+        else {
+            return "false";
+        }
+    }
+	if(var == "DEVID") {
+        return String(config["lora"]["devid"].as<String>());
+    }
+    if(var == "INTERVAL") {
+        return String(TX_INTERVAL);
+    }
+    return String();		
 }
+
 void launchWebserver() {
     // server.rewrite("/", "index_default.html");
     // server.rewrite("/index.html", "index_ap.html").setFilter(ON_AP_FILTER);
@@ -445,12 +576,38 @@ void launchWebserver() {
     server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/styles.css", "text/css");
 	});
+    server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/favicon.ico", "image/png");
+	});
+    server.on("/chart.js", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/chart.js", "text/javascript");
+	});
+    server.on("/toastr.min.css", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/toastr.min.css", "text/css");
+	});
+    server.on("/toastr.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/toastr.min.js", "text/javascript");
+	});
+    server.on("/jquery.js", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/jquery.js", "text/javascript");
+	});
+    server.on("/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/bootstrap.bundle.min.js", "text/javascript");
+	});
+    server.on("/system.js", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/system.js", "text/javascript");
+	});
+
 	server.on("/logo-buergernetzgeragreiz.png", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/logo-buergernetzgeragreiz.png", "image/png");
 	});
 	server.on("/nav_bg.png", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/nav_bg.png", "image/png");
 	});
+    server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request) {
+        delay(1000);
+        ESP.restart();
+    });
     AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/test_wifi", [](AsyncWebServerRequest *request, JsonVariant &json) {
         StaticJsonDocument<200> data;
         if (json.is<JsonArray>())
@@ -470,6 +627,7 @@ void launchWebserver() {
             config["wifi"]["ssid"] = "";
             config["wifi"]["password"] = "";
             config["wifi"]["enabled"] = false;
+
             response = "{\"code\": 200, \"message\":\"OK\"}";
             request->send(400, "application/json", response);
         }        
@@ -488,40 +646,123 @@ void launchWebserver() {
         }
         String response;
         serializeJson(data, response);
-        // if(data["nwkey"] != NULL) {
-        //     for(int i = 0; i < 15; i++){
-        //         NWKSKEY[i] = data["nwkey"][i].as<u1_t>();
-        //     }
-        // }
 
-        // if(data["apkey"] != NULL) {
-        //     for(int i = 0; i < 15; i++){
-        //         APPSKEY[i] = data["apkey"][i].as<u1_t>();
-        //     }
-        // }
-
-        // if(data["devkey"] != NULL){
-        //     DEVADDR = data["devkey"].as<u4_t>();
-        // }
         Serial.println("request Lora-Setup:");
         Serial.println(response);
-        Serial.print("DEVADDR: ");
-        Serial.println(data["devkey"].as<String>());
 
-        Serial.print("NwkSKey: ");
-        Serial.println(data["nwkey"].as<String>());
+        bool oldLoraStatus = config["lora"]["enabled"];
+        config["lora"]["devid"] = data["devid"];
+        config["lora"]["devaddr"] = data["devkey"];
+        config["lora"]["newskey"] = data["nwkey"];
+        config["lora"]["appskey"] = data["apkey"];
+        config["lora"]["enabled"] = data["enabled"];
+        
+        String newCfg = "";
+        serializeJson(config, newCfg);
+        Serial.println(newCfg);
+        lastTime = millis();
+        if(saveConfig()){
+            if(config["lora"]["enabled"] == true) {
+                loadLora();
+            }  
+            String myIP = "";
+            DynamicJsonDocument resp(512);
+            if(aktualKonfigMode == KONFIG_MODE){
+                myIP = IpAddress2String(WiFi.softAPIP());
+            }      
+            else {
+                myIP = IpAddress2String(WiFi.localIP());
+            }
+            if(oldLoraStatus == true && config["lora"]["enabled"] == false) {
+                resp["need_restart"] = true;
+            } else{
+                resp["need_restart"] = false;
+            }
+            resp["code"] = 200;
+            resp["uri"] = myIP;
+            String json = "";
+            serializeJson(resp, json);
+            request->send(200, "application/json", json);
+            json = String();
+        }
+        else {
+            request->send(200, "application/json", "{\"code\":500, \"message\": \"Fehler beim speichern der Loradaten!\"}");
+        }
+    });
+    AsyncCallbackJsonWebHandler *expert_handler = new AsyncCallbackJsonWebHandler("/set_expert", [](AsyncWebServerRequest *request, JsonVariant &json) {
+        StaticJsonDocument<200> data;
+        if (json.is<JsonArray>())
+        {
+            data = json.as<JsonArray>();
+        }
+        else if (json.is<JsonObject>())
+        {
+            data = json.as<JsonObject>();
+        }
+        String response;
+        if(!data.containsKey("mode") || data["mode"] == ""  || data["mode"] == "null") {
+            response = "{\"code\": 400, \"message\":\"nicht erlaubt.\"}";
+            request->send(400, "application/json", response);
+        }
+        else if(data["mode"] == true){  
+            expertMode = true;          
+            response = "{\"code\": 200, \"message\":\"OK\"}";
+            request->send(400, "application/json", response);
+        }        
+        Serial.println("request WLAN-Setup:");
+        Serial.println(response);
+    });
+    server.on("/getchartdatas", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(200, "application/json", sensorResultDatas);
+    });
+    server.on("/myconfig", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String result = "";
+        serializeJson(config, result);
+        request->send(200, "application/json", result);
+        result= String();
+    });
+    server.on("/factory_defaults", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if(SPIFFS.exists("/config.json")){
+            SPIFFS.remove("/config.json");
+        }
 
-        Serial.print("AppSKey: ");
-        Serial.println(data["apkey"].as<String>());
-
-        loadLora();
+        if(SPIFFS.exists("/device.json")){
+            SPIFFS.remove("/device.json");
+        }
+        Serial.println("system -> System wird auf Werkseinstellung zurückgesetzt.");
+        delay(1000);
+        ESP.restart();
     });
     server.addHandler(handler);
     server.addHandler(lora_handler);
     server.begin();
 }
 
+void updateDisplay() {
+    String dMode = "AP";
+    if(aktualKonfigMode == KONFIG_MODE){
+        dMode = "AP";
+    }
+    else if (aktualKonfigMode == WLAN_MODE && wlanAvailable)
+    {
+        if(loraAvailable){
+            dMode = "LW";
+        }
+        else {
+            dMode = "WL";
+        }
+    }
+    else {
+        if(loraAvailable){
+            dMode = "LW";
+        }
+    }
+
+    
+}
+
 void setup(){
+    Wire.begin();
     Serial.begin(115200);
     delay(1000);
     WiFi.disconnect();
@@ -533,7 +774,7 @@ void setup(){
 	digitalWrite(OLED_RST, LOW);
 	delay(20);
 	digitalWrite(OLED_RST, HIGH);
-	Wire.begin(OLED_SDA, OLED_SCL);
+	Wire1.begin(OLED_SDA, OLED_SCL);
 	//Displayinitialisierung ENDE <-
 
     //Prüfung ob Display vorhanden
@@ -563,35 +804,72 @@ void setup(){
 
 	Serial.println("init -> SPIFF gemountet.");		
     generateWifiList();
-	//Lesen der Konfiguration 'config.json' (wenn) vorhanden
+    Serial.println("init -> suche nach Sensoren...");
+    scanHardware();
+    
+    //Lesen der Konfiguration 'config.json' (wenn) vorhanden
     if(!readConfig()){
         // System in den Konfigmodus stellen
         aktualKonfigMode = KONFIG_MODE;
-
-    } else {
+    } else {       
         if(checkWiFi()) {
             aktualKonfigMode = WLAN_MODE;
         }
         auto error = deserializeJson(jsonPayload, esp_default_lora_payload);
         if(error){
             
-        }
-        
+        }        
     }
+
     if(aktualKonfigMode == KONFIG_MODE){
         setAPMode();
+    } else {
+        Serial.print("wifi -> IP: ");
+        Serial.println(WiFi.localIP());
     }
+    randomSeed(10041973);
+    loadLora();    
     launchWebserver();
-    loadLora();
 }
 
 void loop() {
     if(loraInitialized) {
         os_runloop_once();
     }
-    if(millis() / 1000 * 60 == 60){
+    if((millis() - lastTime) > timerDelay){
         generateWifiList();
+
+        Serial.println("system -> lese Sensordaten...");
+        //Vorerst reine Testdaten
+        long random10 = random(100,40000);
+        long random25 = random(100,40000);
+        long temp = random(1800,3900);
+        sortPm10Data(random10 / 100.0);
+        sortPm25Data(random25 / 100.0);
+        sortTmpData(temp / 100.0);
+
+        Serial.println("system -> Sensordaten gelesen...");
+        DynamicJsonDocument jdoc(512);
+        JsonArray pm25 = jdoc.createNestedArray("pm25");
+        for(int i= 0; i < 10; i++) {
+            pm25.add(pm25Datas[i]);
+        }
+        
+        JsonArray pm10 = jdoc.createNestedArray("pm10");
+        for(int i= 0; i < 10; i++) {
+            pm10.add(pm10Datas[i]);
+        }
+
+        JsonArray tarr = jdoc.createNestedArray("tmp");
+        for(int i= 0; i < 10; i++) {
+            tarr.add(tempDatas[i]);
+        }
+        sensorResultDatas = "";
+        serializeJson(jdoc, sensorResultDatas);
+        lastTime = millis();
+        
     }
+    wlanAvailable = WiFi.status() == WL_CONNECTED ? true : false;    
 }
 
 void onEvent (ev_t ev) {
