@@ -72,7 +72,7 @@ const lmic_pinmap lmic_pins = { // Pins des TTGO ESP32 LoRa Board
   .nss = 18,
   .rxtx = LMIC_UNUSED_PIN,
   .rst = 14,
-  .dio = {26, 33, LMIC_UNUSED_PIN},
+  .dio = {26, 33, 32},
 };
 //LCD Screen
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RST);
@@ -126,6 +126,13 @@ StaticJsonDocument<512> jsonPayload;
 //<- Ende Defaultkonfiguration
 unsigned long lastTime = 0;
 unsigned long timerDelay = 60000;
+unsigned long lastDisplayTime = 0;
+unsigned long timerDisplay = 5000;
+int displayView = 0;
+//-> Sensordaten vars
+float temp, humidity, pressure, altitude, pm25, pm10;
+double latitude, longitude;
+//<- Ende Sensordaten
 //-> Flashdaten
 const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -302,14 +309,14 @@ void loadLora(){
   LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
 
   //LMIC_disableChannel(0); //Send only at channel 0
-  LMIC_disableChannel(1);
-  LMIC_disableChannel(2);
-  LMIC_disableChannel(3);
-  LMIC_disableChannel(4);
-  LMIC_disableChannel(5);
-  LMIC_disableChannel(6);
-  LMIC_disableChannel(7);
-  LMIC_disableChannel(8);
+  //LMIC_disableChannel(1);
+  //LMIC_disableChannel(2);
+  //LMIC_disableChannel(3);
+  //LMIC_disableChannel(4);
+  //LMIC_disableChannel(5);
+  //LMIC_disableChannel(6);
+  //LMIC_disableChannel(7);
+  //LMIC_disableChannel(8);
 
   // Disable link check validation
   //LMIC_setLinkCheckMode(0);
@@ -760,7 +767,14 @@ void updateDisplay() {
 
     
 }
-
+void drawCentreString(const char *buf, int x, int y)
+{
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
+    display.setCursor(x - w / 2, y);
+    display.print(buf);
+}
 void setup(){
     Wire.begin();
     Serial.begin(115200);
@@ -870,6 +884,61 @@ void loop() {
         
     }
     wlanAvailable = WiFi.status() == WL_CONNECTED ? true : false;    
+
+    if((millis() - lastDisplayTime) > timerDisplay){
+        //display.fadeout();
+        display.clearDisplay();
+        
+        switch(displayView){
+            case 0: {
+                display.setTextSize(1);
+                display.setCursor(10,20);
+                display.print("Temperatur:");
+                display.setTextSize(2);
+                display.setCursor(10,40);
+                display.print("28");
+                display.setTextSize(1);
+                display.cp437(true);
+                display.write(167);
+                display.setTextSize(2);
+                display.print("C");
+                display.display();
+            }break;
+            case 1: {
+                display.setTextSize(1);
+                display.setCursor(10,20);
+                display.print("Pm10:");
+                display.setCursor(10,40);
+                display.setTextSize(2);
+                display.print("7 g/m3");
+                display.display();
+            } break;
+            case 2: {
+                display.setTextSize(1);
+                display.setCursor(10,20);
+                display.print("Pm25:");
+                display.setTextSize(2);
+                display.setCursor(10,40);
+                display.print("17 g/m3");
+                display.display();
+            } break;
+            case 3: {
+                display.setTextSize(1);
+                display.setCursor(10,20);
+                display.print("Luftfeuchte:");
+                display.setTextSize(2);
+                display.setCursor(10,40);
+                display.print("44%");
+                display.display();
+            }
+        }
+        //display.fadein();
+        displayView++;
+        if(displayView > 3) {
+            displayView = 0;
+        }
+        lastDisplayTime = millis();
+    }
 }
 
 void onEvent (ev_t ev) {
