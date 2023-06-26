@@ -81,6 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(function(){ 
         $('.preloader').addClass('preloader-deactivate');
     }, 3000);
+    adressCoding();
 });
 document.getElementById("enableWlan").addEventListener('click', function(e){
     if(checkConnectionAvailable()){
@@ -184,6 +185,13 @@ document.getElementById("lgimg").addEventListener('click', function(e) {
     }
 });
 
+function adressCoding(){
+    var geoUrl = "https://nominatim.openstreetmap.org/search?q=Eichenstr.+19+07549+Gera&format=json&polygon=1&addressdetails=1";
+    // $.getJSON(geoUrl, function(result) {
+
+    // });
+}
+
 function getConfigDatas(){
     $.getJSON("/myconfig", function(response) {
         document.getElementById("useLora").checked = response["lora"]["enabled"];
@@ -250,28 +258,53 @@ function showConnections(){
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
     document.getElementById("lnkSensors").classList.remove("active");
+    if(expertMode)
+        document.getElementById("lnkSystem").classList.remove("active");
     document.getElementById("lnkConnections").classList.add("active");
 
     document.getElementById("pDashboerd").style.display = "none"
     document.getElementById("pConnections").style.display = "flex"
     document.getElementById("pSensors").style.display = "none"
+    document.getElementById("pSystem").style.display = "none"
 }
 function showSensors() {
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
     document.getElementById("lnkSensors").classList.remove("active");
+    if(expertMode)
+        document.getElementById("lnkSystem").classList.remove("active");
+
     document.getElementById("lnkSensors").classList.add("active");
     document.getElementById("pDashboerd").style.display = "none"
     document.getElementById("pConnections").style.display = "none"
     document.getElementById("pSensors").style.display = "flex"           
+    document.getElementById("pSystem").style.display = "none"
 }
 function showDasboard(){
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
     document.getElementById("lnkSensors").classList.remove("active");
+
+    if(expertMode)
+        document.getElementById("lnkSystem").classList.remove("active");
+
     document.getElementById("lnkHome").classList.add("active");
 
     document.getElementById("pDashboerd").style.display = "flex"
+    document.getElementById("pConnections").style.display = "none"
+    document.getElementById("pSensors").style.display = "none"
+    document.getElementById("pSystem").style.display = "none"
+}
+function showSystem() {
+    document.getElementById("lnkHome").classList.remove("active");
+    document.getElementById("lnkConnections").classList.remove("active");
+    document.getElementById("lnkSensors").classList.remove("active");
+    document.getElementById("lnkSystem").classList.remove("active");
+
+    document.getElementById("lnkSystem").classList.add("active");
+
+    document.getElementById("pSystem").style.display = "flex"
+    document.getElementById("pDashboerd").style.display = "none"
     document.getElementById("pConnections").style.display = "none"
     document.getElementById("pSensors").style.display = "none"
 }
@@ -300,9 +333,42 @@ function checkConnectionAvailable(){
     }
 }
 
+document.getElementById("btnSetDF").addEventListener("click", function(e) {
+    $("#m_factoryDefault").modal("hide");
+});
+
+document.getElementById("btncloseDF").addEventListener("click", function(e) {
+    $.getJSON("/factory_defaults", function(result) {
+        if(result["code"] == 200) {
+            toastr.success("Das System wurde erfolgreich auf Werkseinstellung zurückgesetzt und startet nun neu.", "Werkseintellungen",   {timeOut: 5000});
+        }
+    })
+});
+document.getElementById("sysRestart").addEventListener("click", function(e) {
+
+    $.getJSON("/restart", function(result) {
+        toastr.success("Das System wird nun neu gestartet und sollte in ca. 30 Sekunden wieder zur Verfügung stehen.", "Systemneustart",   {timeOut: 5000});
+    });
+
+    this.style.disabled = true;
+});
 function setFactoryDefault() {
     //Sicherheitsabfrage ob das wirklich gemacht werden soll
-
+    $("#m_factoryDefault").modal("show");
     //JA
     $.getJSON("/factory_defaults",{});
+}
+
+function getAllCfgFiles() {
+    var fileList = "";
+    $.getJSON("/get_cfiles", function(result) {
+        if(result["code"] == 200){
+            for(var i = 0; i < result["files"].length; i++){
+                fileList += '<li onclick="getFileContent('+ result["files"][i]+')" style="cursor: pointer;">';
+                fileList += '<img src="configuration.png" width="32">';
+                fileList += '<span class="text-field">'+ result["files"][i]+'</span>';
+            }
+        }
+    });
+    document.getElementById("files").innerHTML = fileList;
 }

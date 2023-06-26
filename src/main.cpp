@@ -15,6 +15,9 @@
 #include <Adafruit_BME280.h>
 #include "DHTesp.h"
 #include "SDS011.h"
+#include <HTTPClient.h>
+#include <hw_scan.h>
+#include <map>
 
 #define SCK 5
 #define MISO 19
@@ -72,7 +75,7 @@ const lmic_pinmap lmic_pins = { // Pins des TTGO ESP32 LoRa Board
   .nss = 18,
   .rxtx = LMIC_UNUSED_PIN,
   .rst = 14,
-  .dio = {26, 33, 32},
+  .dio = {26, 33, LMIC_UNUSED_PIN},
 };
 //LCD Screen
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RST);
@@ -132,6 +135,7 @@ int displayView = 0;
 //-> Sensordaten vars
 float temp, humidity, pressure, altitude, pm25, pm10;
 double latitude, longitude;
+std::map<std::string, byte> myHardware;
 //<- Ende Sensordaten
 //-> Flashdaten
 const unsigned char lcdlogo [] PROGMEM = {
@@ -477,7 +481,13 @@ void scanHardware(){
             }
             Serial.println(address, HEX);
         }
-    }
+        std::map<std::string, byte> t = GetHardware(address);
+        for(std::pair<std::string, byte> e : myHardware){
+                auto a = myHardware.find(e.first.c_str());
+                if(a != myHardware.end()) {
+                    myHardware.insert({e.first.c_str(), e.second});
+                }
+            }    }
     if(nDevices == 0) {
         Serial.println("scan -> Keine unterstützten I2C Sensoren gefunden.");
     }
@@ -604,16 +614,98 @@ void launchWebserver() {
     server.on("/system.js", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/system.js", "text/javascript");
 	});
-
 	server.on("/logo-buergernetzgeragreiz.png", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/logo-buergernetzgeragreiz.png", "image/png");
 	});
 	server.on("/nav_bg.png", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/nav_bg.png", "image/png");
 	});
+    server.on("/configuration.png", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/configuration.png", "image/png");
+    });
     server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request) {
-        delay(1000);
+        request->send(200, "application/json", "{\"code\": 200}");
+        delay(2000);
         ESP.restart();
+    });
+    server.on("/get_cfile", HTTP_GET, [](AsyncWebServerRequest *request) {
+        int params = request->params();
+        String content = "";
+        AsyncWebParameter* p = request->getParam(0);
+        if(p->name().c_str() == "cfg_file"){
+            String cFile = "/";
+            cFile += p->value();
+            File file = SPIFFS.open(cFile.c_str());
+            if(file){
+                while (file.available()){
+                    content = file.readString();
+                }
+                file.close();
+            }
+            
+            String result= "{\"code\": 200, \"content\":";
+            result += content;
+            result += "\"}";
+            request->send(200, "application/json", result);
+            result= String();
+        }
+    });
+    server.on("/get_cfiles", HTTP_GET, [](AsyncWebServerRequest * request) {
+        DynamicJsonDocument jsdoc(1024);
+        File root = SPIFFS.open("/");
+        File file = root.openNextFile();
+        JsonArray fl = jsdoc.createNestedArray("files");
+        while(file){
+            if(String(file.name()).substring( String(file.name()).length() - 5) ==".json"){
+                fl.add(file.name());
+            }
+        }
+        jsdoc["code"] = 200;
+        String json = "";
+        serializeJson(jsdoc, json);
+        request->send(200, "application/json", json);
+        json = String();
+    });
+    AsyncCallbackJsonWebHandler *geohandler = new AsyncCallbackJsonWebHandler("/geocode", [](AsyncWebServerRequest *request, JsonVariant &json){
+        StaticJsonDocument<200> data;
+        if (json.is<JsonArray>())
+        {
+            data = json.as<JsonArray>();
+        }
+        else if (json.is<JsonObject>())
+        {
+            data = json.as<JsonObject>();
+        }
+        DynamicJsonDocument jdoc(255);
+        if(WiFi.status() == WL_CONNECTED){
+            HTTPClient client;
+
+            String street = data["street"].as<String>();
+            String hnr = data["hnr"].as<String>();
+            String plz = data["zip"].as<String>();
+            String city = data["city"].as<String>();
+street.replace(" ", "+");
+city.replace(" ", "+");
+hnr.replace(" ", "+");
+            String q = "https://nominatim.openstreetmap.org/search?q=" + street + "+" + hnr + "+" + plz+ "+" + city +"&format=json&polygon=1&addressdetails=1";
+            client.begin(q.c_str());
+            int httpResponseCode = client.GET();
+      
+            if (httpResponseCode>0) {
+                Serial.print("HTTP Response code: ");
+                Serial.println(httpResponseCode);
+                String payload = client.getString();
+                Serial.println(payload);
+            }
+            else {
+                Serial.print("Error code: ");
+                Serial.println(httpResponseCode);
+            }
+            // Free resources
+            client.end();
+        }
+        
+
     });
     AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/test_wifi", [](AsyncWebServerRequest *request, JsonVariant &json) {
         StaticJsonDocument<200> data;
@@ -740,6 +832,7 @@ void launchWebserver() {
         delay(1000);
         ESP.restart();
     });
+    server.addHandler(geohandler);
     server.addHandler(handler);
     server.addHandler(lora_handler);
     server.begin();
@@ -753,7 +846,7 @@ void updateDisplay() {
     else if (aktualKonfigMode == WLAN_MODE && wlanAvailable)
     {
         if(loraAvailable){
-            dMode = "LW";
+            dMode = "WL LW";
         }
         else {
             dMode = "WL";
@@ -761,7 +854,7 @@ void updateDisplay() {
     }
     else {
         if(loraAvailable){
-            dMode = "LW";
+            dMode = "   LW";
         }
     }
 
@@ -888,7 +981,27 @@ void loop() {
     if((millis() - lastDisplayTime) > timerDisplay){
         //display.fadeout();
         display.clearDisplay();
-        
+        String dMode = "AP";
+        if(aktualKonfigMode == KONFIG_MODE){
+            dMode = "AP";
+        }
+        else if (aktualKonfigMode == WLAN_MODE && wlanAvailable)
+        {
+            if(loraAvailable){
+                dMode = "WL LW";
+            }
+            else {
+                dMode = "WL";
+            }
+        }
+        else {
+            if(loraAvailable){
+                dMode = "   LW";
+            }
+        }
+        display.setTextSize(1);
+        display.setCursor(90,0);
+        display.print(dMode);
         switch(displayView){
             case 0: {
                 display.setTextSize(1);
@@ -910,7 +1023,7 @@ void loop() {
                 display.print("Pm10:");
                 display.setCursor(10,40);
                 display.setTextSize(2);
-                display.print("7 g/m3");
+                display.print("7g/m3");
                 display.display();
             } break;
             case 2: {
@@ -919,7 +1032,7 @@ void loop() {
                 display.print("Pm25:");
                 display.setTextSize(2);
                 display.setCursor(10,40);
-                display.print("17 g/m3");
+                display.print("17g/m3");
                 display.display();
             } break;
             case 3: {
