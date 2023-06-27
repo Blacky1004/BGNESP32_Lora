@@ -304,6 +304,7 @@ function showSystem() {
     document.getElementById("pDashboerd").style.display = "none"
     document.getElementById("pConnections").style.display = "none"
     document.getElementById("pSensors").style.display = "none"
+    getAllCfgFiles();
 }
 function hex2num(hexcode){ return Number(  '0x' + hexcode.split(/[^0-9a-fA-F]+/).join('')  ) }
 
@@ -342,7 +343,6 @@ document.getElementById("btncloseDF").addEventListener("click", function(e) {
     })
 });
 document.getElementById("sysRestart").addEventListener("click", function(e) {
-
     $.getJSON("/restart", function(result) {
         toastr.success("Das System wird nun neu gestartet und sollte in ca. 30 Sekunden wieder zur Verfügung stehen.", "Systemneustart",   {timeOut: 5000});
     });

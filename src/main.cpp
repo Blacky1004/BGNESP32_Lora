@@ -18,6 +18,8 @@
 #include <HTTPClient.h>
 #include <hw_scan.h>
 #include <map>
+#include <lora_device.h>
+#include <Preferences.h>
 
 #define SCK 5
 #define MISO 19
@@ -51,22 +53,28 @@ uint8_t aktualKonfigMode = KONFIG_MODE;
 // static u1_t NWKSKEY[16];
 // static u1_t APPSKEY[16];
 // static u4_t DEVADDR;
-static const PROGMEM u1_t NWKSKEY[16] = { 0x22, 0xE2, 0xAD, 0x04, 0x62, 0xD6, 0x22, 0x56, 0xFE, 0x24, 0x3E, 0xDD, 0x7C, 0x4E, 0x26, 0x42 };
+// Those variables keep their values after software restart or wakeup from sleep, not after power loss or hard reset !
+RTC_NOINIT_ATTR int RTCseqnoUp, RTCseqnoDn;
+bool resetLora = false;
 
-// LoRaWAN AppSKey, application session key
-static const u1_t PROGMEM APPSKEY[16] = { 0x6B, 0x50, 0x6C, 0x93, 0x9F, 0xAF, 0xF6, 0x24, 0xB0, 0xFC, 0x7D, 0x82, 0xD6, 0x66, 0x97, 0x8C};
-// LoRaWAN end-device address (DevAddr)
-static const u4_t DEVADDR = 0x260B19DF; // <-- Change this address for every node!
-
+#ifdef USE_OTAA
+RTC_NOINIT_ATTR u4_t otaaDevAddr;
+RTC_NOINIT_ATTR u1_t otaaNetwKey[16];
+RTC_NOINIT_ATTR u1_t otaaApRtKey[16];
+void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
+void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8);}
+void os_getDevKey (u1_t* buf) { memcpy_P(buf, APPKEY, 16);}
+#else
 void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
+#endif
 
 //Daten für die Website
 float pm25Datas[10] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float pm10Datas[10] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float tempDatas[10] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-int countPos = 0;
+
 
 static osjob_t sendjob;
 const unsigned TX_INTERVAL = 60;
@@ -77,8 +85,10 @@ const lmic_pinmap lmic_pins = { // Pins des TTGO ESP32 LoRa Board
   .rst = 14,
   .dio = {26, 33, LMIC_UNUSED_PIN},
 };
+
 //LCD Screen
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RST);
+Preferences preferences;
 
 //-> Defaultkonfiguration
 const char esp_default_config[] PROGMEM = R"rawliteral(
@@ -105,22 +115,6 @@ const char esp_default_config[] PROGMEM = R"rawliteral(
 	}
 }	
 )rawliteral";
-const char esp_default_lora_payload[] PROGMEM = R"rawliteral(
-    {
-        "devid": 0,
-        "pm25": 0.0,
-        "pm10": 0.0,
-        "temp": 0,
-        "hum": 0,
-        "hpa": 0,
-        "location":{
-            "height": 0,
-            "latitude": 0.0,
-            "longitude": 0.0
-        }
-    }
-)rawliteral";
-String sensorResultDatas = "{\"pm10\": [], \"pm25\":[], \"tmp\":[]}";
 
 bool loraInitialized = false;
 DynamicJsonDocument config(1024);
@@ -132,11 +126,13 @@ unsigned long timerDelay = 60000;
 unsigned long lastDisplayTime = 0;
 unsigned long timerDisplay = 5000;
 int displayView = 0;
+
 //-> Sensordaten vars
 float temp, humidity, pressure, altitude, pm25, pm10;
 double latitude, longitude;
 std::map<std::string, byte> myHardware;
 //<- Ende Sensordaten
+
 //-> Flashdaten
 const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -198,6 +194,8 @@ String readFile(fs::FS &fs);
 String wiFiListe = "";
 //<- Ende Interne Methoden
 
+char s[32];
+uint8_t txBuffer[9];
 static uint8_t sensorPayload[]="";
 
 int hex2int(char *s) 
@@ -218,6 +216,7 @@ int hex2int(char *s)
   }
   return x;
 }
+
 String IpAddress2String(const IPAddress& ipAddress)
 {
     return String(ipAddress[0]) + String(".") +
@@ -225,6 +224,47 @@ String IpAddress2String(const IPAddress& ipAddress)
            String(ipAddress[2]) + String(".") +
            String(ipAddress[3]);
 }
+
+void storeFrameCounters()
+{
+    if(resetLora) return;
+    RTCseqnoUp = LMIC.seqnoUp;
+    RTCseqnoDn = LMIC.seqnoDn;
+    sprintf(s, "Counters stored as %d/%d", LMIC.seqnoUp, LMIC.seqnoDn);
+    preferences.begin("fcnt", false);
+    preferences.putInt("seqnoUp", RTCseqnoUp);
+    preferences.putInt("seqnoDn", RTCseqnoDn);
+    preferences.end();
+    Serial.println(s);
+}
+
+void restoreFrameCounters()
+{
+  preferences.begin("fcnt", true);
+  RTCseqnoDn = preferences.getInt("seqnoDn", 0);
+  RTCseqnoUp = preferences.getInt("seqnoUp", 0);
+  preferences.end();
+  LMIC.seqnoUp = RTCseqnoUp;
+  LMIC.seqnoDn = RTCseqnoDn;
+  sprintf(s, "Restored counters as %d/%d", LMIC.seqnoUp, LMIC.seqnoDn);
+  Serial.println(s);
+}
+
+void setOrRestorePersistentCounters()
+{
+  esp_reset_reason_t reason = esp_reset_reason();
+  if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
+  {
+    Serial.println(F("Counters both set to 0"));
+    LMIC.seqnoUp = 0;
+    LMIC.seqnoDn = 0;
+  }
+  else
+  {
+    restoreFrameCounters();
+  }
+}
+
 void sortPm25Data(float newValue) {
     for(int i = 0; i < 9; i++){
         pm25Datas[i] = pm25Datas[i+1];
@@ -266,8 +306,22 @@ void do_send(osjob_t* j) {
     Serial.println(F("OP_TXRXPEND, nicht senden"));
   } else {
     // Prepare upstream data transmission at the next possible time.
-    serializeJson(jsonPayload, sensorPayload);
-    static uint8_t payload[] = "YOUR-PAYLOAD";
+    
+    static uint8_t payload[9];
+    int pTmp = ((int)(tempDatas[9] * 100)) + 5000;
+    int pPre = (int)(pressure * 10);
+    byte pHum = (int) (humidity * 2);
+    int pP10 = (int)(pm10Datas[9] * 100);
+    int pP25 = (int)(pm25Datas[9] * 100);
+    payload[0] = pTmp >> 8;
+    payload[1] = pTmp;
+    payload[2] = pPre >> 8;
+    payload[3] = pPre;
+    payload[4] = pHum;
+    payload[5] = pP10 >> 8;
+    payload[6] = pP10;
+    payload[7] = pP25 >> 8;
+    payload[8] = pP25;
     LMIC_setTxData2(1, payload, sizeof(payload)-1, 0);
     Serial.println(F("Packet in der Warteschlange"));
   }
@@ -275,48 +329,39 @@ void do_send(osjob_t* j) {
 }
 
 void loadLora(){
-    #ifdef VCC_ENABLE
-    // For Pinoccio Scout boards
-    pinMode(VCC_ENABLE, OUTPUT);
-    digitalWrite(VCC_ENABLE, HIGH);
-    delay(1000);
-    #endif
 
     // LMIC init
   os_init();
   // Reset the MAC state. Session and pending data transfers will be discarded.
   LMIC_reset();
 
-  #ifdef PROGMEM
-  // On AVR, these values are stored in flash and only copied to RAM
-  // once. Copy them to a temporary buffer here, LMIC_setSession will
-  // copy them into a buffer of its own again.
-  uint8_t appskey[sizeof(APPSKEY)];
-  uint8_t nwkskey[sizeof(NWKSKEY)];
-  memcpy_P(appskey, APPSKEY, sizeof(APPSKEY));
-  memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
-  LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
-#else
-  // If not running an AVR with PROGMEM, just use the arrays directly
+#ifdef USE_OTAA
+  esp_reset_reason_t reason = esp_reset_reason();
+  if ((reason == ESP_RST_DEEPSLEEP) || (reason == ESP_RST_SW))
+  {
+    LMIC_setSession(0x1, otaaDevAddr, otaaNetwKey, otaaApRtKey);
+  }
+#else // ABP
   LMIC_setSession (0x1, DEVADDR, NWKSKEY, APPSKEY);
-#endif
-  
 
-//   LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
-//   LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-//   LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
+  // TTN uses SF9 for its RX2 window.
+  LMIC.dn2Dr = DR_SF9;
 
   // Disable link check validation
-  //LMIC_setLinkCheckMode(0);
+  LMIC_setLinkCheckMode(0);
+#endif
+  
+  restoreFrameCounters();
 
-
-
+  LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
+  LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+  LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
 
   // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
   LMIC_setDrTxpow(DR_SF7, 14);
@@ -325,7 +370,7 @@ void loadLora(){
   do_send(&sendjob);
   
   // TTN uses SF9 for its RX2 window.
-  LMIC.dn2Dr = DR_SF9;
+  //LMIC.dn2Dr = DR_SF9;
   loraInitialized = true;
   loraAvailable = true;
 }
@@ -486,8 +531,7 @@ void scanHardware(){
     }
 }
 
-String htmlProcessor(const String& var) {
-	Serial.println(var);
+String htmlProcessor(const String& var) {	
 	if(var == "LORAAVAILABLE"){	
 		String av = "false";	
 		if(loraAvailable == true) {
@@ -822,34 +866,21 @@ hnr.replace(" ", "+");
         delay(1000);
         ESP.restart();
     });
+    server.on("/reset_lora", HTTP_GET, [](AsyncWebServerRequest * request) {
+        resetLora = true;
+        preferences.begin("fcnt", false);
+        preferences.putInt("seqnoUp", 0);
+        preferences.putInt("seqnoDn", 0);
+        preferences.end();
+        delay(2000);
+        ESP.restart();
+    });
     server.addHandler(geohandler);
     server.addHandler(handler);
     server.addHandler(lora_handler);
     server.begin();
 }
 
-void updateDisplay() {
-    String dMode = "AP";
-    if(aktualKonfigMode == KONFIG_MODE){
-        dMode = "AP";
-    }
-    else if (aktualKonfigMode == WLAN_MODE && wlanAvailable)
-    {
-        if(loraAvailable){
-            dMode = "WL LW";
-        }
-        else {
-            dMode = "WL";
-        }
-    }
-    else {
-        if(loraAvailable){
-            dMode = "   LW";
-        }
-    }
-
-    
-}
 void drawCentreString(const char *buf, int x, int y)
 {
     int16_t x1, y1;
@@ -858,6 +889,7 @@ void drawCentreString(const char *buf, int x, int y)
     display.setCursor(x - w / 2, y);
     display.print(buf);
 }
+
 void setup(){
     Wire.begin();
     Serial.begin(115200);
@@ -945,6 +977,11 @@ void loop() {
         sortPm25Data(random25 / 100.0);
         sortTmpData(temp / 100.0);
 
+        long press = random(30000, 107500);
+        pressure = press / 100;
+        long hum = random(1000, 10000);
+        humidity = hum / 100;
+        //Ende Randomtestdaten
         Serial.println("system -> Sensordaten gelesen...");
         DynamicJsonDocument jdoc(512);
         JsonArray pm25 = jdoc.createNestedArray("pm25");
@@ -1002,7 +1039,7 @@ void loop() {
                 display.print("Temperatur:");
                 display.setTextSize(2);
                 display.setCursor(10,40);
-                display.print("28");
+                display.print(tempDatas[9]);
                 display.setTextSize(1);
                 display.cp437(true);
                 display.write(167);
@@ -1016,7 +1053,7 @@ void loop() {
                 display.print("Pm10:");
                 display.setCursor(10,40);
                 display.setTextSize(2);
-                display.print("7");
+                display.print(pm10Datas[9]);
                 display.cp437(true);
                 display.write(230);
                 display.print("g/m");
@@ -1029,9 +1066,10 @@ void loop() {
                 display.print("Pm25:");
                 display.setTextSize(2);
                 display.setCursor(10,40);
-                display.print("17");
-                display.setTextSize(2);
-                display.print("µg/m");
+                display.print(pm25Datas[9]);
+                display.cp437(true);
+                display.write(230);
+                display.print("g/m");
                 display.setTextSize(1);
                 display.print("3");
                 display.display();
@@ -1075,7 +1113,18 @@ void onEvent (ev_t ev) {
       Serial.println(F("EV_JOINING"));
       break;
     case EV_JOINED:
-      Serial.println(F("EV_JOINED"));
+#ifdef USE_OTAA    
+      otaaDevAddr = LMIC.devaddr;
+      memcpy_P(otaaNetwKey, LMIC.nwkKey, 16);
+      memcpy_P(otaaApRtKey, LMIC.artKey, 16);
+      sprintf(s, "got devaddr = 0x%X", LMIC.devaddr);
+      Serial.println(s);
+#endif
+        // Disable link check validation (automatically enabled
+        // during join, but not supported by TTN at this time).
+        LMIC_setLinkCheckMode(0);
+        // TTN uses SF9 for its RX2 window.
+        LMIC.dn2Dr = DR_SF9;
       break;
     case EV_RFU1:
       Serial.println(F("EV_RFU1"));
@@ -1095,6 +1144,7 @@ void onEvent (ev_t ev) {
         Serial.println(LMIC.dataLen);
         Serial.println(F(" bytes of payload"));
       }
+      storeFrameCounters();
       // Schedule next transmission
       os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(TX_INTERVAL), do_send);
       break;
@@ -1117,6 +1167,9 @@ void onEvent (ev_t ev) {
       case EV_TXSTART:
         Serial.println(F("EV_TXSTART"));
       break;
+      case EV_JOIN_TXCOMPLETE:{
+        Serial.println(F("EV_JOIN_TXCOMPLETE"));
+      }break;
     default:
       Serial.print(F("Unknown event "));
       Serial.println(ev);
