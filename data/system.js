@@ -1,12 +1,9 @@
-var flashSize = 4000000;// %FLASHZIZE%;
-var freeHeap = 358000; // %FREEHEAP%;
-var heap =  24589; //%HEAP%;
-var loraAvailable = true; //%LORAAVAILABLE%;
+
 var useLora = false;
 var useWLAN = false;
 var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
 var lcnt=0;
-var expertMode = false; // %EXPERTMODE%;
+
 var sensorDatas = {
     pm10: [0,0,0,0,0,0,0,0,0,0],
     pm25 : [0,0,0,0,0,0,0,0,0,0],

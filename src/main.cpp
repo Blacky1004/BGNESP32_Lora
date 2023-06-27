@@ -302,25 +302,15 @@ void loadLora(){
 #endif
   
 
-  LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
-  LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-  LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
-
-  //LMIC_disableChannel(0); //Send only at channel 0
-  //LMIC_disableChannel(1);
-  //LMIC_disableChannel(2);
-  //LMIC_disableChannel(3);
-  //LMIC_disableChannel(4);
-  //LMIC_disableChannel(5);
-  //LMIC_disableChannel(6);
-  //LMIC_disableChannel(7);
-  //LMIC_disableChannel(8);
+//   LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
+//   LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+//   LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
 
   // Disable link check validation
   //LMIC_setLinkCheckMode(0);
@@ -612,7 +602,7 @@ void launchWebserver() {
 		request->send(SPIFFS, "/bootstrap.bundle.min.js", "text/javascript");
 	});
     server.on("/system.js", HTTP_GET, [](AsyncWebServerRequest *request){
-		request->send(SPIFFS, "/system.js", "text/javascript");
+		request->send(SPIFFS, "/system.js", "text/javascript", false, htmlProcessor);
 	});
 	server.on("/logo-buergernetzgeragreiz.png", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/logo-buergernetzgeragreiz.png", "image/png");
@@ -984,6 +974,9 @@ void loop() {
         String dMode = "AP";
         if(aktualKonfigMode == KONFIG_MODE){
             dMode = "AP";
+            if(loraAvailable && loraInitialized){
+                dMode = "AP LW";
+            }
         }
         else if (aktualKonfigMode == WLAN_MODE && wlanAvailable)
         {
@@ -1023,8 +1016,12 @@ void loop() {
                 display.print("Pm10:");
                 display.setCursor(10,40);
                 display.setTextSize(2);
-                display.print("7g/m3");
-                display.display();
+                display.print("7");
+                display.cp437(true);
+                display.write(230);
+                display.print("g/m");
+                display.setTextSize(1);
+                display.print("3");display.display();
             } break;
             case 2: {
                 display.setTextSize(1);
@@ -1032,7 +1029,11 @@ void loop() {
                 display.print("Pm25:");
                 display.setTextSize(2);
                 display.setCursor(10,40);
-                display.print("17g/m3");
+                display.print("17");
+                display.setTextSize(2);
+                display.print("µg/m");
+                display.setTextSize(1);
+                display.print("3");
                 display.display();
             } break;
             case 3: {
