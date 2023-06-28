@@ -69,6 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("freeheap").innerHTML = formatSizeUnits(heap) + " frei: " + formatSizeUnits(freeHeap);
     setInterval(function() {
         lcnt = 0;
+        getLoraInfo();
     }, 10000);
     setInterval(() => {
         ajaxCharts();
@@ -291,6 +292,7 @@ function showDasboard(){
     document.getElementById("pConnections").style.display = "none"
     document.getElementById("pSensors").style.display = "none"
     document.getElementById("pSystem").style.display = "none"
+    getLoraInfo();
 }
 function showSystem() {
     document.getElementById("lnkHome").classList.remove("active");
@@ -329,6 +331,13 @@ function checkConnectionAvailable(){
         document.getElementById("loracheck").disabled = false;
         return false;
     }
+}
+
+function getLoraInfo() {
+    $.getJSON("/lora_info", function(result) {
+        document.getElementById("lUplink").innerHTML = result["uplink"];
+        document.getElementById("lDownink").innerHTML = result["downlink"];
+    });
 }
 
 document.getElementById("btnSetDF").addEventListener("click", function(e) {

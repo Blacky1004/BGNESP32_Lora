@@ -115,7 +115,7 @@ const char esp_default_config[] PROGMEM = R"rawliteral(
 	}
 }	
 )rawliteral";
-
+String sensorResultDatas = "{\"pm10\": [], \"pm25\":[], \"tmp\":[]}";
 bool loraInitialized = false;
 DynamicJsonDocument config(1024);
 StaticJsonDocument<512> jsonPayload;
@@ -322,6 +322,10 @@ void do_send(osjob_t* j) {
     payload[6] = pP10;
     payload[7] = pP25 >> 8;
     payload[8] = pP25;
+    for(int i = 0; i < sizeof( payload); i++)
+    {
+    Serial.println(payload[i]);
+    }
     LMIC_setTxData2(1, payload, sizeof(payload)-1, 0);
     Serial.println(F("Packet in der Warteschlange"));
   }
@@ -867,6 +871,7 @@ hnr.replace(" ", "+");
         ESP.restart();
     });
     server.on("/reset_lora", HTTP_GET, [](AsyncWebServerRequest * request) {
+        Serial.println("system -> Resete LoraCounter..");
         resetLora = true;
         preferences.begin("fcnt", false);
         preferences.putInt("seqnoUp", 0);
@@ -874,6 +879,11 @@ hnr.replace(" ", "+");
         preferences.end();
         delay(2000);
         ESP.restart();
+    });
+    server.on("/lora_info", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String result = "{\"uplink\":" + String(RTCseqnoUp)+",\"downlink\":" + String(RTCseqnoDn)+"}";
+        request->send(200, "application/json", result);
+        result = String();        
     });
     server.addHandler(geohandler);
     server.addHandler(handler);
@@ -943,10 +953,6 @@ void setup(){
     } else {       
         if(checkWiFi()) {
             aktualKonfigMode = WLAN_MODE;
-        }
-        auto error = deserializeJson(jsonPayload, esp_default_lora_payload);
-        if(error){
-            
         }        
     }
 

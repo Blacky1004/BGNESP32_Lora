@@ -223,8 +223,16 @@
                                 <td class="ps-0 text-end">%INTERVAL% Sek.</td>
                             </tr>
                             <tr>
-                                <td class="ps-0">letzt. Payload:</td>
-                                <td class="ps-0 text-end">%LASTPAYLOAD%</td>
+                                <td class="ps-0">nächster. Payload:</td>
+                                <td class="ps-0 text-end" id="npl">0</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Uplink:</td>
+                                <td class="ps-0 text-end" id="lUplink">0</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Downlink:</td>
+                                <td class="ps-0 text-end" id="lDownlink">0</td>
                             </tr>
                         </table>
                     </div>
@@ -296,11 +304,11 @@
         </div>
     </div>
     <script>
-        var flashSize =  %FLASHZIZE%;
-        var freeHeap = %FREEHEAP%;
-        var heap =  %HEAP%;
-        var loraAvailable = %LORAAVAILABLE%;
-        var expertMode =  %EXPERTMODE%;
+        var flashSize =  0 //%FLASHZIZE%;
+        var freeHeap = 0 //%FREEHEAP%;
+        var heap = 0 //%HEAP%;
+        var loraAvailable = true//%LORAAVAILABLE%;
+        var expertMode =  false//%EXPERTMODE%;
     </script>
     <script src="system.js"></script>
 </body>
