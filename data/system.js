@@ -3,7 +3,7 @@ var useLora = false;
 var useWLAN = false;
 var loraText = 'LoraWAN steht für deinen Standort leider nicht zur Verfügung bzw. ist die Abdeckung nicht aussreichend.';
 var lcnt=0;
-
+var hasInternet = false;
 var sensorDatas = {
     pm10: [0,0,0,0,0,0,0,0,0,0],
     pm25 : [0,0,0,0,0,0,0,0,0,0],
@@ -67,9 +67,22 @@ document.addEventListener("DOMContentLoaded", () => {
     
     document.getElementById("fszize").innerHTML =  formatSizeUnits(flashSize);
     document.getElementById("freeheap").innerHTML = formatSizeUnits(heap) + " frei: " + formatSizeUnits(freeHeap);
+    
     setInterval(function() {
         lcnt = 0;
         getLoraInfo();
+        try {
+            var testImg = new Image();
+            testImg.src = "https://www.freifunk-gera-greiz.de/images/logo-buergernetzgeragreiz.png";
+            if(testImg.height > 0){
+                hasInternet = true;
+            }
+            else{
+                hasInternet = false;
+            }
+        } catch (error) {
+            hasInternet = false;
+        }
     }, 10000);
     setInterval(() => {
         ajaxCharts();
@@ -79,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(function(){ 
         $('.preloader').addClass('preloader-deactivate');
     }, 3000);
-    adressCoding();
+
 });
 document.getElementById("enableWlan").addEventListener('click', function(e){
     if(checkConnectionAvailable()){
@@ -182,13 +195,10 @@ document.getElementById("lgimg").addEventListener('click', function(e) {
         document.getElementById("nmenu").insertAdjacentHTML('beforeend', expertMenu);
     }
 });
+document.getElementById("checkgps").addEventListener("click", function(e) {
+    getGpsLocation();
+});
 
-function adressCoding(){
-    var geoUrl = "https://nominatim.openstreetmap.org/search?q=Eichenstr.+19+07549+Gera&format=json&polygon=1&addressdetails=1";
-    // $.getJSON(geoUrl, function(result) {
-
-    // });
-}
 
 function getConfigDatas(){
     $.getJSON("/myconfig", function(response) {
@@ -212,7 +222,7 @@ function getConfigDatas(){
         }
         document.getElementById("nwkskey").value = strNKey;
         document.getElementById("appskey").value = strAppKey;
-        document.getElementById("devaddr").value = devaddr;
+        //document.getElementById("devaddr").value = devaddr;
 
         document.getElementById("enableWlan").checked = response["wifi"]["enabled"];   
         if(response["wifi"]["enabled"] == true && response["wifi"]["ssid"].length > 0) {
@@ -224,6 +234,8 @@ function getConfigDatas(){
             }
         }             
         document.getElementById("ssidpasw").value = response["wifi"]["password"];
+        document.getElementById("lat").value = response["location"]["latitude"];
+        document.getElementById("lng").value = response["location"]["longitude"];
     });
 }
 function ajaxCharts() {
@@ -264,6 +276,11 @@ function showConnections(){
     document.getElementById("pConnections").style.display = "flex"
     document.getElementById("pSensors").style.display = "none"
     document.getElementById("pSystem").style.display = "none"
+
+    document.getElementById("street").disabled = !hasInternet;
+    document.getElementById("plz").disabled = !hasInternet;
+    document.getElementById("ort").disabled = !hasInternet;
+    document.getElementById("checkgps").disabled = !hasInternet;
 }
 function showSensors() {
     document.getElementById("lnkHome").classList.remove("active");
@@ -322,7 +339,7 @@ function formatSizeUnits(bytes){
 
 function checkConnectionAvailable(){
     if((loraAvailable == false || document.getElementById("useLora").checked == false) &&  document.getElementById("enableWlan").checked  == false) {
-        alert("Es muss midestens eine Verbindung konfiguriert sein!");
+        alert("Es muss mindestens eine Verbindung konfiguriert sein!");
         document.getElementById("savewlan").disabled = true;
         document.getElementById("loracheck").disabled = true;
         return true;
@@ -336,7 +353,7 @@ function checkConnectionAvailable(){
 function getLoraInfo() {
     $.getJSON("/lora_info", function(result) {
         document.getElementById("lUplink").innerHTML = result["uplink"];
-        document.getElementById("lDownink").innerHTML = result["downlink"];
+        document.getElementById("lDownlink").innerHTML = result["downlink"];
     });
 }
 
@@ -351,12 +368,36 @@ document.getElementById("btncloseDF").addEventListener("click", function(e) {
         }
     })
 });
+
 document.getElementById("sysRestart").addEventListener("click", function(e) {
     $.getJSON("/restart", function(result) {
         toastr.success("Das System wird nun neu gestartet und sollte in ca. 30 Sekunden wieder zur Verfügung stehen.", "Systemneustart",   {timeOut: 5000});
     });
 
     this.style.disabled = true;
+});
+document.getElementById("savelocation").addEventListener("click", function(e) {
+    let lat = document.getElementById("lat").value;
+    let lon = document.getElementById("lng").value;
+    if((lat != "" || lat > 0) && (lon != "" && lon) > 0){
+        let json = {
+            latitude: lat,
+            longitude: lon
+        };
+        $.ajax({
+            url: "/save_location",
+            type: 'post',
+            dataType: "json",
+            contentType: "application/json",
+            data: JSON.stringify(json),
+            success: function(response) {
+                toastr.success("Die Speicherung deiner Standortdaten war erfolgreich.", "Erfolgreich", {timeOut: 5000})
+            },
+            error: function(error) {
+                toastr.error(error["message"], "Fehler!",   {timeOut: 5000});
+            }
+        });
+    }
 });
 function setFactoryDefault() {
     //Sicherheitsabfrage ob das wirklich gemacht werden soll
@@ -377,4 +418,20 @@ function getAllCfgFiles() {
         }
     });
     document.getElementById("files").innerHTML = fileList;
+}
+
+function getGpsLocation(){
+    if(hasInternet){
+        let street = $.trim(document.getElementById("street").value);
+        let plz = $.trim(document.getElementById("plz").value);
+        let ort = $.trim(document.getElementById("ort").value);
+        let url = 'https://nominatim.openstreetmap.org/search?q=' + street.replace(" ", "+") + "+" + plz + "+" + ort.replace(" ", "+") + '&format=json&polygon=1&addressdetails=1';
+        $.getJSON(url, function(result) {
+            if(result[0] != null) {
+                document.getElementById("lat").value = result[0]["lat"];
+                document.getElementById("lng").value = result[0]["lon"];
+            }
+        });
+
+    }
 }

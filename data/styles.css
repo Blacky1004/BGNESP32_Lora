@@ -263,7 +263,9 @@
 .panel li img{width: 64px;}
 .text-field {/* position: absolute; */top: 212px;left: 0;width: 100%;display: block;}
 .text-field h2{color: #fff; background-color: #ff481c; display: inline-block; font-size: 16px; padding: 5px 10px; font-weight: bold; text-transform: uppercase;}
-
+.title-part-padding {
+  padding: 15px 20px;
+}
 *,
 *::before,
 *::after {
