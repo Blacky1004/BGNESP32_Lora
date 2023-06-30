@@ -1,4 +1,13 @@
-#pragma once
+#ifndef _GLOBALS_H
+#define _GLOBALS_H
+
+// The mother of all embedded development...
+#include <Arduino.h>
+#include <lmic.h>
+// std::set for unified array functions
+#include <set>
+#include <array>
+#include <algorithm>
 
 #define SCK 5
 #define MISO 19
@@ -18,3 +27,74 @@
 #define DEFAULT_AP_START "BNG" 
 
 #define LMIC_EVENTMSG_LEN 17
+// pseudo system halt function, useful to prevent writeloops to NVRAM
+#ifndef _ASSERT
+#define _ASSERT(cond)                                                          \
+  if ((cond) == 0) {                                                           \
+    ESP_LOGE(TAG, "FEHLER in %s:%d", __FILE__, __LINE__);                     \
+    for (;;)                                                                   \
+      ;                                                                        \
+  }
+#endif
+
+#define _seconds() millis() / 1000.0
+
+enum payloadSendType {LORA_ONLY, LORA_PREFERABLY, WLAN_ONLY};
+
+typedef struct __attribute__((packed)) {
+    char version[10];
+    char wifi_ssid[32];
+    char wifi_password[255];
+    bool wifi_enabled;
+    bool lora_is_abp;
+    u1_t deveui[8];
+    u1_t appeui[8];
+    u1_t appkey[16];
+    u1_t netid;
+    u1_t nwkskey[16];
+    u4_t devaddr;
+    payloadSendType sendtype;
+    uint8_t loradr;
+    uint8_t txpower; 
+    uint8_t adrmode;
+    uint8_t screensaver;
+    uint8_t screenon;
+    uint8_t countermode;
+    int16_t rssilimit;
+    uint8_t sendcycle;
+    uint16_t sleepcycle;
+    uint16_t wakesync;
+} systemConfig_t;
+
+typedef struct {
+  uint8_t MessageSize;
+  uint8_t MessagePort;
+  uint8_t Message[PAYLOAD_BUFFER_SIZE];
+} MessageBuffer_t;
+
+
+typedef struct {
+    int32_t latitude;
+    int32_t longitude;
+    uint8_t satellites;
+    uint16_t hdop;
+    int16_t altitude;
+} gpsStatus_t;
+
+typedef struct {
+    float iaq;             // IAQ signal
+    uint8_t iaq_accuracy;  // accuracy of IAQ signal
+    float temperature;     // temperature signal
+    float humidity;        // humidity signal
+    float pressure;        // pressure signal
+    float raw_temperature; // raw temperature signal
+    float raw_humidity;    // raw humidity signal
+    float gas;             // raw gas sensor signal
+} bmeStatus_t;
+
+typedef struct {
+  float pm10;
+  float pm25;
+} sdsStatus_t;
+
+#endif

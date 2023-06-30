@@ -1,83 +1,134 @@
 #include "globals.h"
 #include "config_bng.h"
 
-#define DEVCONFIG "loracfg"
+#define DEVCONFIG "bngcfg"
 
 Preferences nvram;
 
-const char esp_default_config[] PROGMEM = R"rawliteral(
-{
-	"wifi": {
-		"ssid":"",
-		"password":"",
-        "enabled": true
-	},
-	"location":{
-		"latitude": 0,
-		"longitude": 0,
-		"height": 0
-	},
-	"lora":{
-		"enabled": true,		
-        "newskey":null,
-        "appskey":null,
-        "devid": "",
-        "devaddr":"260B19DF",
-        "interval": 60
-	},
-	"data_setup":{
-		"preferred":"lora_and_wlan"
-	}
-}	
-)rawliteral";
+systemConfig_t cfg;
 
-bool loadConfig(void) {
-	String file_content = readConfigFile(SPIFFS);
-	int config_file_size = file_content.length();
-	if(config_file_size > 1024){
-		ESP_LOGE(TAG, "Datei zu groß! Max. 1024Kb.");
-		auto error = deserializeJson(config, esp_default_config);
-		if(error) {
-			ESP_LOGE(TAG, "Fehler beim laden der Werkseinstellungen!");
-			return false;
-		}
-		return true;
-	}
+static const uint8_t cfgMagicBytes[] = {0x0A, 0x04, 0x73, 0x08, 0x04};
+static const size_t cfgLen = sizeof(cfg), cfgLen2 = sizeof(cfgMagicBytes);
+static uint8_t buffer[cfgLen + cfgLen2];
 
-	auto error = deserializeJson(config, file_content);
-	if(error){
-		ESP_LOGE(TAG,"Fehler beim lesen der Konfig!");
-		auto error = deserializeJson(config, esp_default_config);
-		if(error){
-            ESP_LOGE(TAG, "config -> Fehler beim laden der Werkseinstellungen!");
-			return false;
-		}
-	}
-	return true;
+static void defaultConfig(systemConfig_t *myConfig) {
+	strncpy(myConfig->version, PROGVERSION, sizeof(myConfig->version) - 1);
+
+	auto appeui = std::initializer_list<u1_t>({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+	std::copy(appeui.begin(), appeui.end(), myConfig->appeui);
+	
+	auto appkey = std::initializer_list<u1_t>({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+	std::copy(appkey.begin(), appkey.end(), myConfig->appkey);
+
+	auto deveui = std::initializer_list<u1_t>({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+	std::copy(deveui.begin(), deveui.end(), myConfig->deveui);
+
+	auto nwkey = std::initializer_list<u1_t>({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+	std::copy(nwkey.begin(), nwkey.end(), myConfig->nwkskey);
+
+	myConfig->lora_is_abp = false;
+	myConfig->sendtype = LORA_ONLY,
+	myConfig->wifi_enabled = true;
+	myConfig->loradr = LORADRDEFAULT;
+	myConfig->txpower = LORATXPOWDEFAULT;
+	myConfig->adrmode = 1;
+	myConfig->screensaver = 0;
+	myConfig->screenon = 1;
+	myConfig->countermode = COUNTERMODE;
+	myConfig->rssilimit = RSSILIMIT;
+	myConfig->sendcycle = SENDCYCLE;
+	myConfig->sleepcycle = SLEEPCYCLE;
+	myConfig->wakesync = SYNCWAKEUP;
 }
 
-String readConfigFile(fs::FS &fs) {
-	ESP_LOGI(TAG,"lese Konfigurationsdatei... ");
-	File file = fs.open("/config.json");
-	if(!file || file.isDirectory()){
-		ESP_LOGW(TAG,"(noch) nicht [nicht vorhanden]");	
-        ESP_LOGI(TAG, "erzeuge neue Datei...");
-        	
-        writeConfigFile(fs, String(esp_default_config));
-		return String(esp_default_config);
-	}
-    else {
-        ESP_LOGI(TAG,"[OK] Eingelesen");
-    }
+static void migrateConfig(void) {
+	eraseConfig();
+}
 
-	String fileText = "";
-	while (file.available())
+void saveConfig(bool erase) {
+	ESP_LOGI(TAG, "Speichere Einstellungen in den NVRAM");
+	nvram.begin(DEVCONFIG, false);
+	if(erase) {
+		ESP_LOGI(TAG, "setze Gerät in die Werkseinstellungen");
+		nvram.clear();
+		defaultConfig(&cfg);
+	}
+
+	//Kopieren der Konfig 'cfg' zum ByteArray incl. dem MagicByte
+	memcpy(buffer, &cfg, cfgLen);
+	memcpy(buffer + cfgLen, &cfgMagicBytes, cfgLen2);
+
+	//abspeichern im NVRAM
+	if(nvram.putBytes(DEVCONFIG, buffer, cfgLen + cfgLen2)){
+		ESP_LOGI(TAG, "Geräteeinstellungen gespeichert.");
+	} else {
+		ESP_LOGE(TAG, "NVRAM FEHLER, Geräteeinstellungen nicht gespeichert!");
+	}
+
+	nvram.end();
+}
+
+void loadConfig(void) {
+	int readBytes = 0;
+	ESP_LOGI(TAG, "lade Geräteeinstellungen vom NVRAM...");
+
+	if (nvram.begin(DEVCONFIG, true)) {
+		//laden der Geräteeinstellungen vom NVRAM und kopieren in ein byteArray
+		 readBytes = nvram.getBytes(DEVCONFIG, buffer, cfgLen + cfgLen2);
+		 nvram.end();
+
+		 if(readBytes != cfgLen + cfgLen2) {
+			ESP_LOGE(TAG, "Ungültige Konfiguration gefunden.");
+			migrateConfig();
+		 }
+	} else {
+		ESP_LOGI(TAG, "NVRAM initialisiert, Gerät startet mit Werkseinstellungen.");
+		eraseConfig();
+	}
+
+	//prüfe die Gültigkeit der Konfiguration Anhand des MagicBytes
+	if(memcmp(buffer + cfgLen, &cfgMagicBytes, cfgLen2) != 0){
+		ESP_LOGE(TAG, "Konfigurationsdaten ungültig/korrupt!");
+		eraseConfig();
+	}
+
+	//laden der Konfiguration in die Konfigstruktur
+	memcpy(&cfg, buffer, cfgLen);
+	ESP_LOGI(TAG, "Konfiguration v%s geladen", cfg.version);
+
+	//prüfen ob die eingelesene Version mit der aktuellen Firmware übereinstimmt
+	switch (version_compare(PROGVERSION, cfg.version))
 	{
-		fileText = file.readString();
+	case  -1:
+		ESP_LOGE(TAG, "Die Konfiguration v%s ist mit der aktuellen Firmware v%s nicht komapatibel!", cfg.version, PROGVERSION);
+		eraseConfig();
+		break;
+	case 1:
+		ESP_LOGW(TAG, "Das Gerät wurde aktualisiert. , versuche die Konfiguration zu migrieren.");
+		migrateConfig();
+		break;
+	default: //Die KOnfiguration ist aktuell
+		break;
 	}
-	file.close();    
-	return fileText;
 }
-void writeConfigFile(fs::FS &fs, String content) {
 
+bool comp(char s1, char s2) { return (tolower(s1) < tolower(s2));}
+
+int version_compare(const String v1, const String v2) {
+	if(v1 == v2)
+		return 0;
+
+	const char *a1 = v1.c_str(), *a2 = v2.c_str();
+
+	if (std::lexicographical_compare(a1, a1 + strlen(a1), a2, a2 + strlen(a2),
+									comp))
+	return -1;
+	else
+	return 1;	
 }
+
+void eraseConfig(void) {
+	reset_rtc_vars();
+	saveConfig(true);
+}
+

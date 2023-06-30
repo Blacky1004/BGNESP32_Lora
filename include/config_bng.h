@@ -2,15 +2,14 @@
 #define _CONFIG_BNG_H
 
 #include "globals.h"
-#include <ArduinoJson.h>
-#include <SPIFFS.h>
+#include "reset.h"
 #include <Preferences.h>
 
-DynamicJsonDocument config(1024);
+extern systemConfig_t cfg;
 
-String readConfigFile(fs::FS &fs);
-void writeConfigFile(fs::FS &fs, String content);
-bool loadConfig(void);
-bool saveConfig(bool erase);
+void saveConfig(bool erase);
+void loadConfig(void);
+void eraseConfig(void);
+int version_compare(const String v1, const String v2);
 
 #endif

@@ -4,6 +4,7 @@
 #include <Arduino.h>
 
 #define HAS_LED LED_BUILTIN
+
 #define HAS_LORA 1
 #define CFG_sx1272_radio 1
 
@@ -20,5 +21,9 @@
 #define MY_DISPLAY_SDA OLED_SDA
 #define MY_DISPLAY_SCL OLED_SCL
 #define MY_DISPLAY_ADDR 0x3C
+
+#define HAS_GPS 1
+#define GPS_INT GPIO_NUM_37;
+#define GPS_SERIAL 9600, SERIAL_8N1, GPIO_NUM_34, GPIO_NUM_12
 
 #endif
