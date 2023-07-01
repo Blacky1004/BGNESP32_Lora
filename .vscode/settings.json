@@ -1,4 +1,7 @@
 {
     "C_Cpp.errorSquiggles": "disabled",
-    "cmake.sourceDirectory": "C:/Users/jenss/source/repos/BGNESP32_Lora/.pio/libdeps/ttgo-lora32-v1/Adafruit GFX Library"
+    "cmake.sourceDirectory": "C:/Users/jenss/source/repos/BGNESP32_Lora/.pio/libdeps/ttgo-lora32-v1/Adafruit GFX Library",
+    "files.associations": {
+        "*.conf": "cpp"
+    }
 }

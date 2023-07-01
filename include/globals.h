@@ -4,6 +4,13 @@
 // The mother of all embedded development...
 #include <Arduino.h>
 #include <lmic.h>
+
+#ifdef HAS_RTC
+#include <RtcUtility.h>
+#include <RtcDateTime.h>
+#endif
+#include <Ticker.h>
+
 // std::set for unified array functions
 #include <set>
 #include <array>
@@ -25,6 +32,19 @@
 
 #define FORMAT_SPIFFS_IF_FAILED true
 #define DEFAULT_AP_START "BNG" 
+
+#define _bit(b) (1U << (b))
+#define _bitl(b) (1UL << (b))
+
+// bits in payloadmask for filtering payload data
+#define COUNT_DATA _bit(0)
+#define RESERVED_DATA _bit(1)
+#define MEMS_DATA _bit(2)
+#define GPS_DATA _bit(3)
+#define SENSOR1_DATA _bit(4)
+#define SENSOR2_DATA _bit(5)
+#define SENSOR3_DATA _bit(6)
+#define BATT_DATA _bit(7)
 
 #define LMIC_EVENTMSG_LEN 17
 // pseudo system halt function, useful to prevent writeloops to NVRAM
@@ -64,6 +84,7 @@ typedef struct __attribute__((packed)) {
     uint8_t sendcycle;
     uint16_t sleepcycle;
     uint16_t wakesync;
+    uint8_t payloadmask;
 } systemConfig_t;
 
 typedef struct {

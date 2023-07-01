@@ -14,6 +14,7 @@
 static QueueHandle_t LoraSendQueue;
 TaskHandle_t lmicTask = NULL, lorasendTask = NULL;
 char lmic_event_msg[LMIC_EVENTMSG_LEN];
+uint8_t errorJoins = 0;
 
 class MyHalConfig_t : public Arduino_LMIC::HalConfiguration_t {
 public:
@@ -37,9 +38,9 @@ static const lmic_pinmap myPinmap = {
     .rst = LORA_RST == NOT_A_PIN ? LMIC_UNUSED_PIN : LORA_RST,
     .dio = {LORA_IRQ, LORA_DIO1,
             LORA_DIO2 == NOT_A_PIN ? LMIC_UNUSED_PIN : LORA_DIO2},
-    //.rxtx_rx_active = LMIC_UNUSED_PIN,
-    //.rssi_cal = 10,
-    //.spi_freq = 8000000, // 8MHz
+    .rxtx_rx_active = LMIC_UNUSED_PIN,
+    .rssi_cal = 10,
+    .spi_freq = 8000000, // 8MHz
     .pConfig = &myHalConfig
 };
 void lora_setupForNetwork(bool preJoin) {
@@ -147,10 +148,10 @@ void os_getDevEui(u1_t *buf) {
     uint8_t buf[32];
     os_getDevEui((u1_t *)buf);
     printKey("DevEUI", buf, 8, true);
-    //os_getArtEui((u1_t *)buf);
-    //printKey("AppEUI", buf, 8, true);
-    //os_getDevKey((u1_t *)buf);
-    //printKey("AppKey", buf, 16, false);
+    os_getArtEui((u1_t *)buf);
+    printKey("AppEUI", buf, 8, true);
+    os_getDevKey((u1_t *)buf);
+    printKey("AppKey", buf, 16, false);
     }
 
 #endif // VERBOSE
@@ -213,11 +214,9 @@ esp_err_t lmic_init(void) {
     //Setup LMIC Stack
     os_init_ex(&myPinmap);
     
-    ESP_LOGI(TAG, "initialisiere Callback's...");
     LMIC_registerRxMessageCb(myRxCallback, NULL);
     LMIC_registerEventCb(myEventCallback, NULL);
 
-    ESP_LOGI(TAG, "LMIC RESET");
     LMIC_reset();
 
     #ifdef CLOCK_ERROR_PROCENTAGE
@@ -323,11 +322,17 @@ void myEventCallback(void *pUserData, ev_t ev) {
         case EV_JOIN_FAILED:
         // must call LMIC_reset() to stop joining
         // otherwise join procedure continues.
+        ESP_LOGE(TAG, "EV_JOIN_FAILED");
         LMIC_reset();
         break;
 
         case EV_JOIN_TXCOMPLETE:
         // replace descriptor from library with more descriptive term
+        if(errorJoins >= 50) {
+            LMIC_reset();
+        } else 
+          errorJoins++;
+
         snprintf(lmic_event_msg, LMIC_EVENTMSG_LEN, "%-16s", "JOIN_WAIT");
         break;
 

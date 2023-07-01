@@ -6,7 +6,7 @@
 #endif
 
 #define LMIC_ENABLE_DeviceTimeReq 1
-//#define LMIC_DEBUG_LEVEL 1
+#define LMIC_DEBUG_LEVEL 3
 //#define LMIC_PRINTF_TO Serial
 #define LMIC_FAILURE_TO Serial
 #define DISABLE_PING

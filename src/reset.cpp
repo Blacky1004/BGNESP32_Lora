@@ -96,3 +96,101 @@ void do_after_reset(void) {
         break;
     }
 }
+
+void enter_deepsleep(uint32_t wakeup_sec, gpio_num_t wakeup_gpio) {
+  ESP_LOGI(TAG, "Preparing to sleep...");
+
+  RTC_runmode = RUNMODE_SLEEP;
+
+  // validate wake up pin, if we have
+  if (!GPIO_IS_VALID_GPIO(wakeup_gpio))
+    wakeup_gpio = GPIO_NUM_MAX;
+  // stop further enqueuing of senddata and MAC processing
+  //libpax_counter_stop();
+
+  // switch off any power consuming hardware
+#if (HAS_SDS011)
+  sds011_sleep();
+#endif
+
+  // wait a while (max 100 sec) to clear send queues
+  ESP_LOGI(TAG, "Waiting until send queues are empty...");
+  for (int i = 100; i > 0; i--) {
+    if (allQueuesEmtpy())
+      break;
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+
+// wait up to 100secs until LMIC is idle
+#if (HAS_LORA)
+  lora_waitforidle(100);
+#endif // (HAS_LORA)
+
+// shutdown MQTT safely
+#ifdef HAS_MQTT
+  mqtt_deinit();
+#endif
+
+// shutdown SPI safely
+#ifdef HAS_SPI
+  spi_deinit();
+#endif
+
+// save LMIC state to RTC RAM
+#if (HAS_LORA)
+  SaveLMICToRTC(wakeup_sec);
+#endif // (HAS_LORA)
+
+// set display to power save mode
+#ifdef HAS_DISPLAY
+  //dp_shutdown();
+#endif
+
+// reduce power if has PMU or VEXT
+#ifdef HAS_PMU
+  AXP192_power(pmu_power_sleep);
+#elif EXT_POWER_SW
+  digitalWrite(EXT_POWER_SW, EXT_POWER_OFF);
+#endif
+
+  // halt interrupts accessing i2c bus
+  mask_user_IRQ();
+
+  // shutdown i2c bus
+  //i2c_deinit();
+
+#if (HAS_TIME)
+  if (cfg.wakesync && cfg.sleepcycle)
+    adjust_wakeup(&wakeup_sec);
+#endif
+
+  // configure wakeup sources
+  // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/sleep_modes.html
+
+  // set up RTC wakeup timer, if we have
+  if (wakeup_sec > 0) {
+    esp_sleep_enable_timer_wakeup(wakeup_sec * uS_TO_S_FACTOR);
+  }
+
+  // set wakeup gpio, if we have
+  if (wakeup_gpio != GPIO_NUM_MAX) {
+    rtc_gpio_isolate(wakeup_gpio); // minimize deep sleep current
+    esp_sleep_enable_ext1_wakeup(1ULL << wakeup_gpio, ESP_EXT1_WAKEUP_ALL_LOW);
+  }
+
+  // time stamp sleep start time and save system monotonic time. Deep sleep.
+  gettimeofday(&sleep_start_time, NULL);
+  RTC_millis += esp_timer_get_time() / 1000LL;
+  ESP_LOGI(TAG, "Going to sleep, good bye.");
+
+// flush & close sd card, if we have
+#if (HAS_SDCARD)
+  sdcard_close();
+#endif
+
+  esp_deep_sleep_start();
+}
+
+uint64_t uptime() {
+  return (uint64_t)(RTC_millis + esp_timer_get_time() / 1000LL);
+}

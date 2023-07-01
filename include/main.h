@@ -10,6 +10,8 @@
 #include "globals.h" //unsere globalen Deklarationen
 #include "reset.h"
 #include "config_bng.h" //all unsere Konfigurationssachen
+#include "irqhandler.h"
+#include "i2c.h"
 #include "lorawan.h" //LoRaWAN 
 #include "timekeeper.h"
 

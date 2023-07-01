@@ -4,6 +4,7 @@
 #include <driver/rtc_io.h>
 #include <soc/reset_reasons.h>
 
+#include "i2c.h"
 #include "lorawan.h"
 
 void reset_rtc_vars(void);

@@ -45,18 +45,55 @@ void setup() {
     #endif
 
     //i2c Bus initialisieren...
+    i2c_init();
+
+// now that we are powered, we scan i2c bus for devices
+  if (RTC_runmode == RUNMODE_POWERCYCLE)
+    i2c_scan();
+
+    #if (HAS_GPS)
+  strcat_P(features, " GPS");
+  if (gps_init()) {
+    ESP_LOGI(TAG, "Starting GPS Feed...");
+    xTaskCreatePinnedToCore(gps_loop,  // task function
+                            "gpsloop", // name of task
+                            8192,      // stack size of task
+                            (void *)1, // parameter of the task
+                            1,         // priority of the task
+                            &GpsTask,  // task handle
+                            1);        // CPU core
+  }
+#endif
 
     // initialize LoRa
     #if (HAS_LORA)
     strcat_P(features, " LORA");
     _ASSERT(lmic_init() == ESP_OK);
     #endif
+// start state machine
+  ESP_LOGI(TAG, "Starting Interrupt Handler...");
+  xTaskCreatePinnedToCore(irqHandler,      // task function
+                          "irqhandler",    // name of task
+                          4096,            // stack size of task
+                          (void *)1,       // parameter of the task
+                          4,               // priority of the task
+                          &irqHandlerTask, // task handle
+                          1);              // CPU core
 
     //GPS initialisieren
     #if (HAS_GPS) 
     strcat_P(features, " GPS");
     
     #endif
+
+    // starting timers and interrupts
+  _ASSERT(irqHandlerTask != NULL); // has interrupt handler task started?
+  ESP_LOGI(TAG, "Starting Timers...");
+
+#if ((HAS_LORA_TIME) || (HAS_GPS) || defined HAS_RTC)
+  time_init();
+  strcat_P(features, " TIME");
+#endif // timesync
 
     // show compiled features
     ESP_LOGI(TAG, "Features:%s", features);
