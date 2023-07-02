@@ -44,8 +44,8 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->wifi_mode = WIFI_STA;
 	myConfig->wifi_enabled = true;
 
-	strcpy(myConfig->wifi_ssid, "Vodafone-342C");
-	strcpy(myConfig->wifi_password, "eTGx3Z4bJFpKLZe9");
+	strcpy(myConfig->wifi_ssid, "");
+	strcpy(myConfig->wifi_password, "");
 }
 
 static void migrateConfig(void) {
