@@ -82,10 +82,13 @@ void sendData() {
       if (GPSPORT == COUNTERPORT) {
         // send GPS position only if we have a fix
         if (gps_hasfix()) {
+          ESP_LOGD(TAG,"Speichere GPS Payload...");
           gps_storelocation(&gps_status);
           payload.addGPS(gps_status);
         } else
           ESP_LOGD(TAG, "No valid GPS position");
+      } else {
+        ESP_LOGD(TAG, "GPSPORT nicht gleich!");
       }
 #endif
 

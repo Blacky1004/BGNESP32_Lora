@@ -13,6 +13,9 @@
 #include "irqhandler.h"
 #include "i2c.h"
 #include "lorawan.h" //LoRaWAN 
+#include "wifihandler.h"
 #include "timekeeper.h"
+#include "boot.h"
+#include "webserver.h"
 
 #endif

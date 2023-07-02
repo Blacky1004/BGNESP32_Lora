@@ -4,6 +4,7 @@
 // The mother of all embedded development...
 #include <Arduino.h>
 #include <lmic.h>
+#include <WiFi.h>
 
 #ifdef HAS_RTC
 #include <RtcUtility.h>
@@ -65,6 +66,7 @@ typedef struct __attribute__((packed)) {
     char version[10];
     char wifi_ssid[32];
     char wifi_password[255];
+    wifi_mode_t wifi_mode;
     bool wifi_enabled;
     bool lora_is_abp;
     u1_t deveui[8];
@@ -117,5 +119,12 @@ typedef struct {
   float pm10;
   float pm25;
 } sdsStatus_t;
+
+typedef struct {  
+  char wifi_ssid[32];
+  wifi_mode_t wifi_mode;
+  wl_status_t actual_wifi_status;
+  char hostname[32];
+} systemvars_t;
 
 #endif

@@ -9,6 +9,7 @@ void setup() {
 
     #if(VERBOSE) 
     Serial.begin(115200);
+    delay(1000);
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     #else
     esp_log_level_set("*", ESP_LOG_NONE);
@@ -51,7 +52,14 @@ void setup() {
   if (RTC_runmode == RUNMODE_POWERCYCLE)
     i2c_scan();
 
-    #if (HAS_GPS)
+  #if (BOOTMENU)
+    if(RTC_runmode == RUNMODE_POWERCYCLE)
+      start_boot_menu();
+  #endif
+
+  if(RTC_runmode == RUNMODE_MAINTENANCE)
+    start_boot_menu();
+  #if (HAS_GPS)
   strcat_P(features, " GPS");
   if (gps_init()) {
     ESP_LOGI(TAG, "Starting GPS Feed...");
@@ -63,8 +71,13 @@ void setup() {
                             &GpsTask,  // task handle
                             1);        // CPU core
   }
-#endif
+  #endif
 
+  strcat_P(features, " WiFi");
+  ESP_LOGI(TAG,"Inititialisiere WiFi...");
+  if(wifi_init()) {
+    ESP_LOGI(TAG, "WiFi erfolgreich initialisiert.");    
+  }
     // initialize LoRa
     #if (HAS_LORA)
     strcat_P(features, " LORA");
@@ -80,13 +93,7 @@ void setup() {
                           &irqHandlerTask, // task handle
                           1);              // CPU core
 
-    //GPS initialisieren
-    #if (HAS_GPS) 
-    strcat_P(features, " GPS");
-    
-    #endif
-
-    // starting timers and interrupts
+  // starting timers and interrupts
   _ASSERT(irqHandlerTask != NULL); // has interrupt handler task started?
   ESP_LOGI(TAG, "Starting Timers...");
 
@@ -94,11 +101,17 @@ void setup() {
   time_init();
   strcat_P(features, " TIME");
 #endif // timesync
+// Laufzeitvariablen laden
+    systemCfg.actual_wifi_status = WiFi.status();
+    systemCfg.wifi_mode = cfg.wifi_mode;
+    strncpy(systemCfg.wifi_ssid, WiFi.SSID().c_str(), sizeof(WiFi.SSID().c_str()) -1 );
 
+//Webserver starten
+webserver_init();
     // show compiled features
     ESP_LOGI(TAG, "Features:%s", features);
     RTC_runmode = RUNMODE_NORMAL;
-
+    
     vTaskDelete(NULL);
 }
 

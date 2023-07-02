@@ -6,6 +6,7 @@
 #include <Preferences.h>
 
 extern systemConfig_t cfg;
+extern systemvars_t systemCfg;
 
 void saveConfig(bool erase);
 void loadConfig(void);

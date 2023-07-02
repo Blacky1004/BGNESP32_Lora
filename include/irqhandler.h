@@ -11,10 +11,12 @@
 #define BME_IRQ _bitl(7)
 #define MATRIX_DISPLAY_IRQ _bitl(8)
 #define PMU_IRQ _bitl(9)
+#define WIFI_IRQ _bitl(10)
 
 #include "globals.h"
 #include "senddata.h"
 #include "timekeeper.h"
+#include "wifihandler.h"
 
 void irqHandler(void *pvParameters);
 void mask_user_IRQ();

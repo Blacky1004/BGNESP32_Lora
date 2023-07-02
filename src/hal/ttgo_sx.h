@@ -26,4 +26,5 @@
 #define GPS_INT GPIO_NUM_37
 #define GPS_SERIAL 9600, SERIAL_8N1, GPIO_NUM_34, GPIO_NUM_12
 
+#define HAS_WIFI 1
 #endif

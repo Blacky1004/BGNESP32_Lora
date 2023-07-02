@@ -150,7 +150,10 @@ void gps_storelocation(gpsStatus_t *gps_store) {
     gps_store->satellites = (uint8_t)gps.satellites.value();
     gps_store->hdop = (uint16_t)gps.hdop.value();
     gps_store->altitude = (int16_t)gps.altitude.meters();
+  } else {
+    ESP_LOGE(TAG, "Keine gültigen GPS Daten erhalten!");
   }
+
 }
 
 bool gps_hasfix() {
@@ -212,7 +215,6 @@ void gps_loop(void *pvParameters) {
     while (cfg.payloadmask & GPS_DATA) {
       while (GPS_Serial.available())
         gps.encode(GPS_Serial.read());
-
       delay(5);
     }
     delay(1000);

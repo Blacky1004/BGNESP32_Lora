@@ -266,6 +266,10 @@
 .title-part-padding {
   padding: 15px 20px;
 }
+#map {
+  height: 180px;
+  width: 100%;
+}
 *,
 *::before,
 *::after {

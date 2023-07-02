@@ -6,6 +6,7 @@
 Preferences nvram;
 
 systemConfig_t cfg;
+systemvars_t systemCfg;
 
 static const uint8_t cfgMagicBytes[] = {0x0A, 0x04, 0x73, 0x08, 0x04};
 static const size_t cfgLen = sizeof(cfg), cfgLen2 = sizeof(cfgMagicBytes);
@@ -13,7 +14,7 @@ static uint8_t buffer[cfgLen + cfgLen2];
 
 static void defaultConfig(systemConfig_t *myConfig) {
 	strncpy(myConfig->version, PROGVERSION, sizeof(myConfig->version) - 1);
-
+	
 	auto appeui = std::initializer_list<u1_t>({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
 	std::copy(appeui.begin(), appeui.end(), myConfig->appeui);
 	
@@ -40,6 +41,11 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->sleepcycle = SLEEPCYCLE;
 	myConfig->wakesync = SYNCWAKEUP;
 	myConfig->payloadmask = PAYLOADMASK;
+	myConfig->wifi_mode = WIFI_STA;
+	myConfig->wifi_enabled = true;
+
+	strcpy(myConfig->wifi_ssid, "Vodafone-342C");
+	strcpy(myConfig->wifi_password, "eTGx3Z4bJFpKLZe9");
 }
 
 static void migrateConfig(void) {
@@ -101,7 +107,7 @@ void loadConfig(void) {
 	switch (version_compare(PROGVERSION, cfg.version))
 	{
 	case  -1:
-		ESP_LOGE(TAG, "Die Konfiguration v%s ist mit der aktuellen Firmware v%s nicht komapatibel!", cfg.version, PROGVERSION);
+		ESP_LOGE(TAG, "Die Konfiguration v%s ist mit der aktuellen Firmware v%s nicht kompatibel!", cfg.version, PROGVERSION);
 		eraseConfig();
 		break;
 	case 1:
