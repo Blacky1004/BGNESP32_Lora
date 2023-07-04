@@ -59,6 +59,9 @@ void irqHandler(void *pvParameters) {
       bme_storedata(&bme_status);
 #endif
 
+    // are cyclic tasks due?
+    if (irqSource & CYCLIC_IRQ)
+      doHousekeeping();
 #if (HAS_WIFI)
   if(irqSource & WIFI_IRQ)
   wifi_loop();

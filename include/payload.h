@@ -2,7 +2,7 @@
 #define _PAYLOAD_H_
 
 // #include "sensor.h"
-// #include "sds011read.h"
+#include "sds01read.h"
 #include "gpsread.h"
 
 // MyDevices CayenneLPP 1.0 channels for Synamic sensor payload format

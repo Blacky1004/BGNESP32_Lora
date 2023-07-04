@@ -59,10 +59,13 @@ void setup() {
 
   if(RTC_runmode == RUNMODE_MAINTENANCE)
     start_boot_menu();
+    // start rcommand processing task
+  ESP_LOGI(TAG, "Starting rcommand interpreter...");
+  rcmd_init();
   #if (HAS_GPS)
   strcat_P(features, " GPS");
   if (gps_init()) {
-    ESP_LOGI(TAG, "Starting GPS Feed...");
+    ESP_LOGI(TAG, "Starte GPS Feed...");
     xTaskCreatePinnedToCore(gps_loop,  // task function
                             "gpsloop", // name of task
                             8192,      // stack size of task
@@ -79,12 +82,18 @@ void setup() {
     ESP_LOGI(TAG, "WiFi erfolgreich initialisiert.");    
   }
     // initialize LoRa
-    #if (HAS_LORA)
-    strcat_P(features, " LORA");
-    _ASSERT(lmic_init() == ESP_OK);
-    #endif
+  #if (HAS_LORA)
+  strcat_P(features, " LORA");
+  _ASSERT(lmic_init() == ESP_OK);
+  #endif
+
+  #if (HAS_SDS011)
+  ESP_LOGI(TAG, "Initialisiere Feinstaubsensor...");
+  if (sds011_init())
+    strcat_P(features, " SDS");
+#endif
 // start state machine
-  ESP_LOGI(TAG, "Starting Interrupt Handler...");
+  ESP_LOGI(TAG, "Starte Interrupt Handler...");
   xTaskCreatePinnedToCore(irqHandler,      // task function
                           "irqhandler",    // name of task
                           4096,            // stack size of task
@@ -93,9 +102,24 @@ void setup() {
                           &irqHandlerTask, // task handle
                           1);              // CPU core
 
+#if(HAS_BME) 
+#ifdef HAS_BME680
+  strcat_P(features, " BME680");
+#elif defined HAS_BME280
+  strcat_P(features, " BME280");
+#elif defined HAS_BMP180
+  strcat_P(features, " BMP180");
+#endif
+  if (bme_init())
+    ESP_LOGI(TAG, "BME Sensor initialisiert");
+  else {
+    ESP_LOGE(TAG, "BME Sensor konnte nicht initialisiert werden!");
+    cfg.payloadmask &= (uint8_t)~MEMS_DATA; // switch off transmit of BME data
+  }
+#endif
   // starting timers and interrupts
   _ASSERT(irqHandlerTask != NULL); // has interrupt handler task started?
-  ESP_LOGI(TAG, "Starting Timers...");
+  ESP_LOGI(TAG, "Starte Timer...");
 
 #if ((HAS_LORA_TIME) || (HAS_GPS) || defined HAS_RTC)
   time_init();
@@ -108,6 +132,8 @@ void setup() {
 
 //Webserver starten
 webserver_init();
+ // cyclic function interrupts
+  cyclicTimer.attach(HOMECYCLE, setCyclicIRQ);
     // show compiled features
     ESP_LOGI(TAG, "Features:%s", features);
     RTC_runmode = RUNMODE_NORMAL;

@@ -6,8 +6,8 @@
 
 TinyGPSPlus gps;
 TaskHandle_t GpsTask;
-HardwareSerial GPS_Serial(1); // use UART #1
-
+//HardwareSerial GPS_Serial(1); // use UART #1
+SoftwareSerial ss(GPS_SERIAL_RX, GPS_SERIAL_TX);
 // Ublox UBX packet data
 
 // UBX CFG-PRT packet
@@ -82,62 +82,12 @@ byte CFG_CFG[] = {
     0b00010001  // devicemask
 };
 
-// helper functions to send UBX commands to ublox gps chip
-
-void sendPacket(byte *packet, byte len) {
-  uint8_t CK_A = 0;
-  uint8_t CK_B = 0;
-
-  for (int i = 0; i < len; i++)
-    GPS_Serial.write(packet[i]);
-
-  // calculate and send Fletcher checksum
-  for (int i = 2; i < len; i++) {
-    CK_A += packet[i];
-    CK_B += CK_A;
-  }
-  GPS_Serial.write(CK_A);
-  GPS_Serial.write(CK_B);
-}
-
-void restoreDefaults() { sendPacket(CFG_CFG, sizeof(CFG_CFG)); }
-void changeBaudrate() { sendPacket(CFG_PRT, sizeof(CFG_PRT)); }
-
-void disableNmea() {
-  // tinygps++ processes only $GPGGA/$GNGGA and $GPRMC/$GNRMC
-  // thus, we disable all other NMEA messages
-
-  byte packetSize = sizeof(CFG_MSG);
-
-  // Offset to the place where payload starts.
-  byte payloadOffset = 6;
-
-  // Iterate over the messages array.
-  for (byte i = 0; i < sizeof(CFG_MSG_CID) / sizeof(*CFG_MSG_CID); i++) {
-    // Copy two bytes of payload to the packet buffer.
-    for (byte j = 0; j < sizeof(*CFG_MSG_CID); j++) {
-      CFG_MSG[payloadOffset + j] = CFG_MSG_CID[i][j];
-    }
-    sendPacket(CFG_MSG, packetSize);
-  }
-}
-
 // initialize and configure GPS
 int gps_init(void) {
   ESP_LOGI(TAG, "Opening serial GPS");
-
-  GPS_Serial.begin(GPS_SERIAL);
-
-  restoreDefaults();
-  delay(100);
-
-  changeBaudrate();
-  delay(100);
-  GPS_Serial.flush();
-  GPS_Serial.updateBaudRate(GPS_BAUDRATE);
-
-  disableNmea();
-
+  systemCfg.gps_enabled = true;
+  ss.begin(GPS_BAUDRATE);
+  
   return 1;
 } // gps_init()
 
@@ -150,8 +100,10 @@ void gps_storelocation(gpsStatus_t *gps_store) {
     gps_store->satellites = (uint8_t)gps.satellites.value();
     gps_store->hdop = (uint16_t)gps.hdop.value();
     gps_store->altitude = (int16_t)gps.altitude.meters();
+    systemCfg.gps_latlng_valid = true;
   } else {
     ESP_LOGE(TAG, "Keine gültigen GPS Daten erhalten!");
+    systemCfg.gps_latlng_valid = false;;
   }
 
 }
@@ -184,7 +136,7 @@ time_t get_gpstime(uint16_t *msec = 0) {
     // convert UTC tm to time_t epoch
     gps_tm.tm_isdst = 0; // UTC has no DST
     time_t t = mkgmtime(&gps_tm);
-
+    ESP_LOGD(TAG, "Aktuelle Zeit: %02d.%02d.%02d %02d:%02d:%02d",gps.date.day(), gps.date.month(), gps.date.year(), gps.time.hour(), gps.time.minute(), gps.time.second());
 #ifdef GPS_INT
     // if we have a recent GPS PPS pulse, sync on top of next second
     uint16_t ppsDiff = millis() - lastPPS;
@@ -198,11 +150,12 @@ time_t get_gpstime(uint16_t *msec = 0) {
     // best guess for sync on top of next second
     *msec = gps.time.centisecond() * 10U + txDelay;
 #endif
-
+    systemCfg.gps_time_valid = true;
     return t;
   }
 
   ESP_LOGD(TAG, "no valid GPS time");
+  systemCfg.gps_time_valid = false;
   return 0;
 } // get_gpstime()
 
@@ -213,9 +166,13 @@ void gps_loop(void *pvParameters) {
   // feed GPS decoder with serial NMEA data from GPS device
   while (1) {
     while (cfg.payloadmask & GPS_DATA) {
-      while (GPS_Serial.available())
-        gps.encode(GPS_Serial.read());
+      while (ss.available())
+        gps.encode(ss.read());
+      if (millis() > 5000 && gps.charsProcessed() < 10){
+        ESP_LOGE(TAG, "Keine Verbindung zum GPS Modul, bitte Verbindungen prüfen!");
+      }
       delay(5);
+
     }
     delay(1000);
   } // infinite while loop

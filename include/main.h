@@ -8,6 +8,7 @@
 #include <esp_wifi.h> //für den zugriff auf init und deinit von WIFI
 
 #include "globals.h" //unsere globalen Deklarationen
+#include "cyclic.h"
 #include "reset.h"
 #include "config_bng.h" //all unsere Konfigurationssachen
 #include "irqhandler.h"

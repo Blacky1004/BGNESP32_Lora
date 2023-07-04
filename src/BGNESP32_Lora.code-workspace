@@ -58,7 +58,9 @@
             "streambuf": "cpp",
             "cinttypes": "cpp",
             "typeinfo": "cpp",
-            "*.conf": "cpp"
+            "*.conf": "cpp",
+            "list": "cpp",
+            "set": "cpp"
         }
     }
 }

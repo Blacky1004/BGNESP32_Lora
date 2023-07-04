@@ -5,9 +5,10 @@
 
 #include <TinyGPS++.h> // library for parsing NMEA data
 #include "timekeeper.h"
+#include <SoftwareSerial.h>
 
 #ifndef GPS_BAUDRATE
-#define GPS_BAUDRATE 115200UL
+#define GPS_BAUDRATE 9600UL
 #endif
 
 extern TinyGPSPlus gps; // Make TinyGPS++ instance globally availabe

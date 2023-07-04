@@ -45,7 +45,7 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->wifi_enabled = true;
 
 	strcpy(myConfig->wifi_ssid, "");
-	strcpy(myConfig->wifi_password, "");
+	strcpy(myConfig->wifi_password, "");	
 }
 
 static void migrateConfig(void) {

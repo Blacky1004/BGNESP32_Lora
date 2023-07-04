@@ -201,8 +201,9 @@ void lora_send(void *pvParameters) {
     }
 }
 
-esp_err_t lmic_init(void) {
+esp_err_t lmic_init(void) {    
     _ASSERT(SEND_QUEUE_SIZE > 0);
+    systemCfg.lora_status = LORA_INIT;
     LoraSendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(MessageBuffer_t));
     if(LoraSendQueue == 0) {
         ESP_LOGE(TAG, "Die LoRa Sendewarteschlange konnte nicht erstellt werden. Abbruch!");
@@ -247,7 +248,7 @@ esp_err_t lmic_init(void) {
                           2,              // priority of the task
                           &lorasendTask,  // task handle
                           1);             // CPU core
-
+  systemCfg.lora_status = LORA_INITIALIZED;
   return ESP_OK;
 
 }
@@ -311,11 +312,13 @@ void myEventCallback(void *pUserData, ev_t ev) {
 
         case EV_JOINING:
         // do the network-specific setup prior to join.
+        systemCfg.lora_status = LORA_JOINING;
         lora_setupForNetwork(true);
         break;
 
         case EV_JOINED:
         // do the after join network-specific setup.
+        systemCfg.lora_status = LORA_JOINED;
         lora_setupForNetwork(false);
         break;
 
@@ -329,10 +332,10 @@ void myEventCallback(void *pUserData, ev_t ev) {
         case EV_JOIN_TXCOMPLETE:
         // replace descriptor from library with more descriptive term
         if(errorJoins >= 50) {
-            LMIC_reset();
+            //LMIC_reset();
         } else 
           errorJoins++;
-
+        systemCfg.lora_status = LORA_JOINWAIT;
         snprintf(lmic_event_msg, LMIC_EVENTMSG_LEN, "%-16s", "JOIN_WAIT");
         break;
 
@@ -359,7 +362,7 @@ void myRxCallback(void *pUserData, uint8_t port, const uint8_t *pMsg, size_t nMs
     switch (port) {
         // rcommand received -> call interpreter
         case RCMDPORT:
-        //rcommand(pMsg, nMsg);
+        rcommand(pMsg, nMsg);
         break;
 
         // timeserver answer -> call timesync processor

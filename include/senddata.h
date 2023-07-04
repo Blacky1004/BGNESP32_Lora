@@ -3,7 +3,7 @@
 
 // #include "spislave.h"
 // #include "mqttclient.h"
-// #include "cyclic.h"
+#include "cyclic.h"
 // #include "sensor.h"
 #include "lorawan.h"
 // #include "display.h"

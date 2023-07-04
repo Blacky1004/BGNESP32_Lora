@@ -2,6 +2,7 @@
 #define _TTGO_SX_H
 
 #include <Arduino.h>
+#include <stdint.h>
 
 #define HAS_LED LED_BUILTIN
 
@@ -23,8 +24,19 @@
 #define MY_DISPLAY_ADDR 0x3C
 
 #define HAS_GPS 1
-#define GPS_INT GPIO_NUM_37
-#define GPS_SERIAL 9600, SERIAL_8N1, GPIO_NUM_34, GPIO_NUM_12
+//#define GPS_INT GPIO_NUM_37
+#define GPS_SERIAL_TX 17
+#define GPS_SERIAL_RX 16
 
 #define HAS_WIFI 1
+
+#define HAS_BME 1
+#define HAS_BME280 GPIO_NUM_21, GPIO_NUM_13 // SDA, SCL
+#define BME280_ADDR 0x76
+
+// SDS011 dust sensor settings
+//#define HAS_SDS011 1 // use SDS011
+// used pins on the ESP-side:
+#define SDS_TX 34     // connect to RX on the SDS011
+#define SDS_RX 35     // connect to TX on the SDS011
 #endif

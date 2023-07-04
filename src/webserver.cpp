@@ -1,4 +1,6 @@
 #include "webserver.h"
+#include <ArduinoJson.h>
+
 AsyncWebServer server(80);
 String htmlProcessor(const String& var){
     if(var == "CHIPID") {
@@ -9,7 +11,12 @@ String htmlProcessor(const String& var){
 }
 
 void webserver_init() {
-    ESP_LOGI(TAG,"Starte Webserver auf http://%s ...", WiFi.localIP().toString().c_str());
+    while (systemCfg.wifi_ready == false)
+    {
+        delay(20);
+    }
+    
+    ESP_LOGI(TAG,"Starte Webserver auf http://%s ...", cfg.wifi_mode == WIFI_AP ? WiFi.softAPIP().toString().c_str() : WiFi.localIP().toString().c_str());
 
     if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
 		ESP_LOGE(TAG,"SPIFFS Mountingfehler, Webserver wird nicht gestartet!");
@@ -62,6 +69,55 @@ void webserver_init() {
     });
     #pragma endregion
 
+    #pragma region Ajaxabfragen
+    server.on("/get_wifi_list", HTTP_GET, [](AsyncWebServerRequest *request) {
+        DynamicJsonDocument doc(1024);
+        JsonArray wl = doc.createNestedArray("wifis");
+        for(wifi_network_t w: myWiFiList){
+            JsonObject o = wl.createNestedObject();
+            o["id"] = w.id;
+            o["ssid"] = w.ssid;
+            o["bssid"] = w.bssid;
+            o["rssi"] = w.rssi;
+            o["enc_type"] = w.encrytionType;
+            wl.add(o);
+        }
+        doc["mode"] = systemCfg.wifi_mode;
+        doc["status"] = systemCfg.actual_wifi_status;
+        doc["code"] = 200;
+        String json = "";
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+        json= String();
+    });
+    server.on("/get_lora_info", HTTP_GET, [](AsyncWebServerRequest *request) {
+        DynamicJsonDocument doc(1024);
+        doc["status"] = systemCfg.lora_status;
+        
+        #if (USE_OTAA)
+            JsonArray devkey = doc.createNestedArray("deveui");
+            JsonArray appkey = doc.createNestedArray("appeui");
+            JsonArray apskey = doc.createNestedArray("appkey");
+            doc["mode"] = "OTAA";
+            for(u1_t d: DEVEUI) {
+                devkey.add(d);
+            }
+            for(u1_t a: APPEUI) {
+                appkey.add(a);
+            }
+            for(u1_t k: APPKEY) {
+                apskey.add(k);
+            }
+            if(systemCfg.lora_status == LORA_JOINED) {
+                doc["netid"] = LMIC.netid & 0x001FFFFF;
+                doc["devaddr"] = String(LMIC.devaddr, HEX);
+            }
+        #else
+            doc["mode"] = "ABP";
+        #endif
+
+    });
+    #pragma endregion
     server.begin();
     ESP_LOGI(TAG, "Webserver erfolgreich gestartet.");
 }

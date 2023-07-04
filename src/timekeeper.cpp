@@ -73,9 +73,9 @@ void calibrateTime(void) {
 
 // get GPS time, if we have
 #if (HAS_GPS)
-//   t = get_gpstime(&t_msec);
-//   if (setMyTime((uint32_t)t, t_msec, _gps))
-//     return;
+  t = get_gpstime(&t_msec);
+   if (setMyTime((uint32_t)t, t_msec, _gps))
+       return;
 #endif
 
 // fallback to RTC time, if we have

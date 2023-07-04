@@ -61,7 +61,7 @@
 #define _seconds() millis() / 1000.0
 
 enum payloadSendType {LORA_ONLY, LORA_PREFERABLY, WLAN_ONLY};
-
+enum loraStatus {LORA_OFF, LORA_INIT, LORA_INITIALIZED,LORA_JOINING, LORA_JOINED, LORA_JOINWAIT};
 typedef struct __attribute__((packed)) {
     char version[10];
     char wifi_ssid[32];
@@ -125,6 +125,11 @@ typedef struct {
   wifi_mode_t wifi_mode;
   wl_status_t actual_wifi_status;
   char hostname[32];
+  bool wifi_ready;
+  loraStatus lora_status;
+  bool gps_enabled;
+  bool gps_time_valid;
+  bool gps_latlng_valid;
 } systemvars_t;
 
 #endif

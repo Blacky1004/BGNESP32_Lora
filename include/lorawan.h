@@ -6,6 +6,7 @@
 #include "globals.h"
 #include "timekeeper.h"
 #include "config_bng.h"
+#include "rcommand.h"
 
 #include <driver/rtc_io.h>
 

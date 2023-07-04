@@ -33,7 +33,7 @@ void i2c_scan(void) {
 
   BBI2C bbi2c;
 
-  ESP_LOGI(TAG, "Starting I2C bus scan...");
+  ESP_LOGI(TAG, "Starte I2C Bus scan...");
 
   memset(&bbi2c, 0, sizeof(bbi2c));
   bbi2c.bWire = 1;
@@ -51,8 +51,8 @@ void i2c_scan(void) {
   I2CScan(&bbi2c, map); // get bitmap of connected I2C devices
   if (map[0] == 0xfe)   // something is wrong with the I2C bus
   {
-    ESP_LOGI(TAG, "I2C pins are not correct or the bus is being pulled low "
-                  "by a bad device; unable to run scan");
+    ESP_LOGI(TAG, "Die Pins sind nicht korrekt oder der Bus wird durch ein fehlerhaftes Gerät auf Low gezogen. "
+                  "Der Scan konnte nicht ausgeführt werden");
   } else {
     iCount = 0;
     for (i = 1; i < 128; i++) // skip address 0 (general call address) since
@@ -63,11 +63,11 @@ void i2c_scan(void) {
         iCount++;
         iDevice = I2CDiscoverDevice(&bbi2c, i, &iDevCapab);
         I2CGetDeviceName(iDevice, szName);
-        ESP_LOGI(TAG, "Device found at 0x%X, type = %s", i,
+        ESP_LOGI(TAG, "Gerät gefunden unter 0x%X, type = %s", i,
                  szName); // show the device name as a string
       }
     } // for i
-    ESP_LOGI(TAG, "%u I2C device(s) found", iCount);
+    ESP_LOGI(TAG, "%u I2C Gerät(e) gefunden", iCount);
   }
 }
 

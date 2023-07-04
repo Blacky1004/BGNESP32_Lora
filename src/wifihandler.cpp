@@ -2,9 +2,11 @@
 #include <WiFi.h>
 #include "esp_random.h"
 #include <map>
+#include<list>
 
 TaskHandle_t WiFiTask;
-std::map<int, std::string>  wifiNetworkList;
+
+std::list<wifi_network_t> myWiFiList;
 Ticker wificycler;
 uint32_t chipId = 0;
 String mySSID = "";
@@ -16,11 +18,16 @@ void load_WiFiNetwork() {
         ESP_LOGW(TAG, "Keine Netzwerke gefunden!");
         cfg.wifi_mode = WIFI_AP;
     } else {
-        wifiNetworkList.clear();
-
+        myWiFiList.clear();
         for (int i = 0; i < n; i++)
         {
-            wifiNetworkList.insert({i, WiFi.SSID(i).c_str()});
+            wifi_network_t w;
+            w.bssid = WiFi.BSSID();
+            w.id = i;
+            w.encrytionType = WiFi.encryptionType(i);
+            w.rssi = WiFi.RSSI();
+            w.ssid = WiFi.SSID();
+            myWiFiList.push_back(w);            
         }        
     }
 }
@@ -43,9 +50,11 @@ int startAP() {
     
     if(WiFi.softAP(mySSID,"")) {
         ESP_LOGI(TAG,"AccessPoint mit der SSID %s gestartet", mySSID);
+        systemCfg.wifi_ready = true;
         return 1;
     } else {
         ESP_LOGE(TAG, "Fehler beim starten des AccessPoints!");
+        systemCfg.wifi_ready = false;
         return 0;
     }
 }
@@ -58,6 +67,7 @@ int wifi_init() {
     load_WiFiNetwork();
     if(!cfg.wifi_enabled) {
         ESP_LOGW(TAG, "WiFi ist nicht aktiviert.");
+        systemCfg.wifi_ready = false;
         return 0;
     }
     if(cfg.wifi_mode == WIFI_STA) {
@@ -74,6 +84,7 @@ int wifi_init() {
                 ESP_LOGI(TAG,"Verbunden mit WLAN '%s'", WiFi.SSID());
                 ESP_LOGI(TAG, "Mein Hostname: '%s'", WiFi.getHostname());
                 ESP_LOGI(TAG, "lokale IP: %s", WiFi.localIP().toString());
+                systemCfg.wifi_ready = true;
             } else {
                 ESP_LOGW(TAG, "Konnte keine Verbindung zu SSID '%s' aufbauen, starte AccessPoint.", WiFi.SSID());
                 status = startAP();

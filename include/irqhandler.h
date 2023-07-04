@@ -14,8 +14,10 @@
 #define WIFI_IRQ _bitl(10)
 
 #include "globals.h"
+#include "cyclic.h"
 #include "senddata.h"
 #include "timekeeper.h"
+#include "bmesensor.h"
 #include "wifihandler.h"
 
 void irqHandler(void *pvParameters);
