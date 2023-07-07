@@ -5,6 +5,7 @@
 
 #include <SdsDustSensor.h>
 #include "globals.h"
+#include "config_bng.h"
 
 // use original pins from HardwareSerial if none defined
 #ifndef SDS_TX

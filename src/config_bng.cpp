@@ -11,7 +11,10 @@ systemvars_t systemCfg;
 static const uint8_t cfgMagicBytes[] = {0x0A, 0x04, 0x73, 0x08, 0x04};
 static const size_t cfgLen = sizeof(cfg), cfgLen2 = sizeof(cfgMagicBytes);
 static uint8_t buffer[cfgLen + cfgLen2];
-
+float pm10Datas[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float pm25Datas[]= {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float tempDatas[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float humdatas[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 static void defaultConfig(systemConfig_t *myConfig) {
 	strncpy(myConfig->version, PROGVERSION, sizeof(myConfig->version) - 1);
 	
@@ -43,7 +46,7 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->payloadmask = PAYLOADMASK;
 	myConfig->wifi_mode = WIFI_STA;
 	myConfig->wifi_enabled = true;
-
+	myConfig->cpuspeed = ESP.getCpuFreqMHz();
 	strcpy(myConfig->wifi_ssid, "");
 	strcpy(myConfig->wifi_password, "");	
 }
@@ -139,3 +142,30 @@ void eraseConfig(void) {
 	saveConfig(true);
 }
 
+void sort_chart_data(String a_name, float newValue) {
+
+	if(a_name == "tempDatas") {
+		for(int i = 0; i < 9; i++){
+        	tempDatas[i] = tempDatas[i+1];
+    	}
+    	tempDatas[9] = newValue;
+	}
+	else if(a_name ==  "pm25Datas") {
+		for(int i = 0; i < 9; i++){
+        	pm25Datas[i] = pm25Datas[i+1];
+    	}
+    	pm25Datas[9] = newValue;
+	}
+	else if(a_name ==  "pm10Datas") {
+		for(int i = 0; i < 9; i++){
+        	pm10Datas[i] = pm10Datas[i+1];
+    	}
+    	pm10Datas[9] = newValue;
+	}
+	else if(a_name == "humdatas") {
+		for(int i = 0; i < 9; i++){
+        	humdatas[i] = humdatas[i+1];
+    	}
+    	humdatas[9] = newValue;
+	}
+}

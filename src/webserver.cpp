@@ -7,6 +7,27 @@ String htmlProcessor(const String& var){
         ESP_LOGD(TAG, "VAR CHIPID = '%s'", systemCfg.hostname);
         return String(systemCfg.hostname);
     }
+    if(var == "CHIPMODEL") {
+        return String(cfg.model);
+    }
+    if(var == "CHIPREV") {
+        return String(cfg.revision);
+    }
+    if(var == "CORES") {
+        return String(cfg.cores);
+    }
+    if(var == "MHZ") {
+        return String(cfg.cpuspeed);
+    }
+    if(var == "RAWCHIPID") {
+        return String(cfg.chipid);
+    }
+    if(var =="DEVID") {
+        return String(LMIC.devaddr, HEX);
+    }
+    if(var == "INTERVAL") {
+        return String(cfg.sendcycle);
+    }
     return String();
 }
 
@@ -16,7 +37,8 @@ void webserver_init() {
         delay(20);
     }
     
-    ESP_LOGI(TAG,"Starte Webserver auf http://%s ...", cfg.wifi_mode == WIFI_AP ? WiFi.softAPIP().toString().c_str() : WiFi.localIP().toString().c_str());
+    systemCfg.myip = systemCfg.wifi_mode == WIFI_AP ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+    ESP_LOGI(TAG,"Starte Webserver auf http://%s ...", systemCfg.myip);
 
     if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
 		ESP_LOGE(TAG,"SPIFFS Mountingfehler, Webserver wird nicht gestartet!");
@@ -85,6 +107,9 @@ void webserver_init() {
         doc["mode"] = systemCfg.wifi_mode;
         doc["status"] = systemCfg.actual_wifi_status;
         doc["code"] = 200;
+        if(systemCfg.wifi_mode == WIFI_STA) {
+            doc["selected_bssid"] = cfg.wifi_bssid;
+         }
         String json = "";
         serializeJson(doc, json);
         request->send(200, "application/json", json);
@@ -115,9 +140,138 @@ void webserver_init() {
         #else
             doc["mode"] = "ABP";
         #endif
+        doc["lcycle"] = cfg.sendcycle;
+        doc["devid"] = String(LMIC.devaddr, HEX);
+        doc["lwaitings"] = systemCfg.lora_waitings;
+        doc["lpayload"] = systemCfg.last_payload;
+        doc["rparams"] = systemCfg.radioParams; 
 
+        String json = "";
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+        json= String();
     });
+    server.on("/get_sensors", HTTP_GET, [](AsyncWebServerRequest *request) {
+        DynamicJsonDocument doc(1024);
+        
+        JsonObject ocfg = doc.createNestedObject("cfg");
+        ocfg["lcycle"] = cfg.sendcycle;
+        ocfg["devid"] = String(LMIC.devaddr, HEX);
+        ocfg["rev"] = cfg.revision;
+        ocfg["flash"] = cfg.flashsize / 1024 / 1024;
+        ocfg["version"] =  String(cfg.version);
+        ocfg["speed"] = ESP.getCpuFreqMHz();
+        ocfg["heap"] = systemCfg.heap;
+        ocfg["freeheap"] = systemCfg.freeheap;
+        JsonObject wlan = doc.createNestedObject("wlan");
+        wlan["mode"] = systemCfg.wifi_mode == WIFI_STA ? "WLAN Station" : "AccessPoint";
+        wlan["ssid"] = systemCfg.wifi_ssid;
+        wlan["ip"] = systemCfg.myip;
+        JsonObject gps = doc.createNestedObject("gps");
+        gps["enabled"] = systemCfg.gps_enabled;
+        gps["valid"] = systemCfg.gps_latlng_valid;
+        if(systemCfg.gps_latlng_valid) {
+            gps["lat"] = systemCfg.lat;
+            gps["lng"] = systemCfg.lon;
+            gps["sat"] = systemCfg.sats;
+            gps["alt"] = systemCfg.altitude;
+        }
+        JsonObject sds = doc.createNestedObject("sds");
+        sds["valid"] = systemCfg.sds_valid;
+        if(systemCfg.sds_valid) {
+            sds["pm10"] = systemCfg.pm10;
+            sds["pm25"] = systemCfg.pm25;
+        }
+        JsonObject bme = doc.createNestedObject("bme");
+        bme["valid"] = systemCfg.bme_valid;
+        bme["temp"] = systemCfg.temp;
+        bme["hum"] = systemCfg.hum;
+        bme["press"] = systemCfg.press;
+        String json = "";
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+        json= String();
+    });
+    server.on("/get_chartdatas", HTTP_GET, [](AsyncWebServerRequest * request) {
+        DynamicJsonDocument doc(1024);
+        JsonArray pm10 = doc.createNestedArray("pm10");
+        for(int i= 0; i < 10; i++) {
+            pm10.add(pm10Datas[i]);
+        }
+        JsonArray pm25 = doc.createNestedArray("pm25");
+        for(int i= 0; i < 10; i++) {
+            pm25.add(pm25Datas[i]);
+        }
+        JsonArray tmp = doc.createNestedArray("tmp");
+        for(int i= 0; i < 10; i++) {
+            tmp.add(tempDatas[i]);
+        }
+        JsonArray hum = doc.createNestedArray("hum");
+        for(int i= 0; i < 10; i++) {
+            hum.add(humdatas[i]);
+        }
+        String json = "";
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+        json= String();
+    });
+    // AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
+    //     StaticJsonDocument<200> data;
+    //     if (json.is<JsonArray>())
+    //     {
+    //         data = json.as<JsonArray>();
+    //     }
+    //     else if (json.is<JsonObject>())
+    //     {
+    //         data = json.as<JsonObject>();
+    //     }
+    //     String response;
+    //     if((!data.containsKey("ssid") || data["ssid"] == ""  || data["ssid"] == "null") && data["enabled"] == true) {
+    //         response = "{\"code\": 400, \"message\":\"Es wurde keine SSID übergeben.\"}";
+    //         request->send(400, "application/json", response);
+    //     } 
+    //     else if(data["enabled"] == false) {
+    //         cfg.wifi_mode = WIFI_AP;
+    //         cfg.wifi_bssid = 0;
+    //         strcpy(cfg.wifi_password , "");
+    //         strcpy(cfg.wifi_ssid , "");
+    //         cfg.wifi_enabled = false;
+    //         response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";
+    //         request->send(200, "application/json", response);
+    //         saveConfig(false);
+    //         do_reset(false);
+    //     } else {
+    //         cfg.wifi_mode = WIFI_STA;
+    //         bool found = false;
+    //         for(wifi_network_t w: myWiFiList)
+    //         {
+    //             String snBssid = data["ssid"].as<String>();
+    //             char *cnBssid  = new char [snBssid.length() +1];
+    //             char * coBssid;
+    //             snprintf(coBssid, sizeof(cnBssid),(char *)w.bssid);
+    //             //strcpy(coBssid, String(w.bssid).c_str() );
+    //             if(coBssid == cnBssid){
+    //                 cfg.wifi_bssid =  w.bssid;
+    //                 cfg.wifi_enabled = true;
+    //                 strcpy(cfg.wifi_password, data["ssidpasw"].as<String>().c_str());
+    //                 strcpy(cfg.wifi_ssid,  w.ssid.c_str());
+    //                 found = true;
+    //             }
+    //         }
+    //         if(found){
+    //             saveConfig(false);
+    //             response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";
+    //             request->send(200, "application/json", response);
+    //             do_reset(false);
+    //         } else {
+    //             response = "{\"code\": 404, \"message\":\"Es wurde Kein Netzwerk mit dieser SSID gefunden.\"}";
+    //             request->send(200, "application/json", response);
+    //         }
+    //     }
+    // });
+    //server.addHandler(check_wifi_handler);
     #pragma endregion
+
     server.begin();
     ESP_LOGI(TAG, "Webserver erfolgreich gestartet.");
 }

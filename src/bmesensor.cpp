@@ -71,8 +71,11 @@ int bme_init(void) {
 
 #endif
 
-  if (rc)
+  if (rc) {
+    systemCfg.bme_valid = true;
     bmecycler.attach(BMECYCLE, setBMEIRQ); // start cyclic data transmit
+  }
+    
   return rc;
 } // bme_init()
 

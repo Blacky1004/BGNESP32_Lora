@@ -18,11 +18,11 @@ void setup() {
     do_after_reset();
     ESP_LOGI(TAG, "Starte System v%s (Runmode=%d / Neustarts=%d)", PROGVERSION, RTC_runmode, RTC_restarts);
     ESP_LOGI(TAG, "Firmwaredatum: %d", compileTime());
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
 
     #if(VERBOSE)
         if(RTC_runmode == RUNMODE_POWERCYCLE) {
-            esp_chip_info_t chip_info;
-            esp_chip_info(&chip_info);
             ESP_LOGI(TAG, "ESP32 Chip mit %d Kernen, WiFI%s%s, Silicon Revision %d, %dMB Flash",  chip_info.cores,
             (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
             (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "",
@@ -44,7 +44,12 @@ void setup() {
             #endif
         }
     #endif
-
+    cfg.flashsize = ESP.getFlashChipSize();
+    cfg.revision = chip_info.revision;
+    cfg.cores = chip_info.cores;
+    systemCfg.heap = ESP.getHeapSize();
+    systemCfg.freeheap = ESP.getFreeHeap();
+    strncpy(cfg.model, ESP.getChipModel(), sizeof(ESP.getChipModel())) ;
     //i2c Bus initialisieren...
     i2c_init();
 
@@ -128,7 +133,7 @@ void setup() {
 // Laufzeitvariablen laden
     systemCfg.actual_wifi_status = WiFi.status();
     systemCfg.wifi_mode = cfg.wifi_mode;
-    strncpy(systemCfg.wifi_ssid, WiFi.SSID().c_str(), sizeof(WiFi.SSID().c_str()) -1 );
+    //strncpy(systemCfg.wifi_ssid, WiFi.SSID().c_str(), sizeof(WiFi.SSID().c_str()) -1 );
 
 //Webserver starten
 webserver_init();

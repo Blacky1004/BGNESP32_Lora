@@ -60,12 +60,18 @@
 
 #define _seconds() millis() / 1000.0
 
+extern float	pm25Datas[];
+extern float	pm10Datas[];
+extern float	tempDatas[];
+extern float humdatas[];
 enum payloadSendType {LORA_ONLY, LORA_PREFERABLY, WLAN_ONLY};
 enum loraStatus {LORA_OFF, LORA_INIT, LORA_INITIALIZED,LORA_JOINING, LORA_JOINED, LORA_JOINWAIT};
 typedef struct __attribute__((packed)) {
     char version[10];
     char wifi_ssid[32];
     char wifi_password[255];
+    uint32_t chipid;
+    u_int8_t *wifi_bssid;
     wifi_mode_t wifi_mode;
     bool wifi_enabled;
     bool lora_is_abp;
@@ -87,6 +93,11 @@ typedef struct __attribute__((packed)) {
     uint16_t sleepcycle;
     uint16_t wakesync;
     uint8_t payloadmask;
+    char model[50];
+    uint8_t revision;
+    uint8_t cores;
+    uint32_t flashsize;
+    uint32_t cpuspeed;
 } systemConfig_t;
 
 typedef struct {
@@ -130,6 +141,23 @@ typedef struct {
   bool gps_enabled;
   bool gps_time_valid;
   bool gps_latlng_valid;
+  bool bme_valid;
+  bool sds_valid;
+  float temp;
+  float hum;
+  float press;
+  float pm10;
+  float pm25;
+  double lat;
+  double lon;
+  double altitude;
+  uint32_t sats;
+  String myip;
+  uint32_t heap;
+  uint32_t freeheap;
+  uint8_t lora_waitings;
+  char radioParams[40];
+  time_t last_payload;
 } systemvars_t;
 
 #endif

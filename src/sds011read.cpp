@@ -21,12 +21,16 @@ void sds011_loop() {
         PmResult pm = sds.queryPm();
         if(!pm.isOk()) {
             ESP_LOGE(TAG, "SDS011: Abfragefehler: %s", pm.statusToString().c_str());
-            pm10 = pm25 = 0.0;
+            systemCfg.pm10 = systemCfg.pm25 = pm10 = pm25 = 0.0;
+            systemCfg.sds_valid = false;
         } else {
             ESP_LOGI(TAG, "SDS011: %s", pm.toString().c_str());
-            pm10 = pm.pm10;
-            pm25 = pm.pm25;
+            systemCfg.pm10 = pm10 = pm.pm10;
+            systemCfg.pm25 = pm25 = pm.pm25;
+            systemCfg.sds_valid = true;
         }
+        sort_chart_data("pm10Datas", pm10);
+        sort_chart_data("pm25Datas", pm25);
         ESP_LOGD(TAG, "SDS011: Gehe in SleepMode.");
         sds011_sleep();
     }

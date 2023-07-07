@@ -35,8 +35,8 @@
 #define BME280_ADDR 0x76
 
 // SDS011 dust sensor settings
-//#define HAS_SDS011 1 // use SDS011
+#define HAS_SDS011 1 // use SDS011
 // used pins on the ESP-side:
-#define SDS_TX 34     // connect to RX on the SDS011
-#define SDS_RX 35     // connect to TX on the SDS011
+#define SDS_TX 19     // connect to RX on the SDS011
+#define SDS_RX 23     // connect to TX on the SDS011
 #endif

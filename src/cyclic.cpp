@@ -7,6 +7,7 @@
 
 Ticker cyclicTimer;
 
+
 void setCyclicIRQ() { xTaskNotify(irqHandlerTask, CYCLIC_IRQ, eSetBits); }
 
 // do all housekeeping
@@ -21,34 +22,44 @@ void doHousekeeping() {
            ESP.getMaxAllocHeap(), uxTaskGetStackHighWaterMark(NULL));
 
   if (irqHandlerTask != NULL)
-    ESP_LOGD(TAG, "IRQhandler %d bytes left | Taskstate = %d",
+    ESP_LOGD(TAG, "IRQhandler %d Bytes übrig | Taskstatus = %d",
              uxTaskGetStackHighWaterMark(irqHandlerTask),
              eTaskGetState(irqHandlerTask));
   if (rcmdTask != NULL)
-    ESP_LOGD(TAG, "Rcommand interpreter %d bytes left | Taskstate = %d",
+    ESP_LOGD(TAG, "Rcommand interpreter %d Bytes übrig | Taskstatus = %d",
              uxTaskGetStackHighWaterMark(rcmdTask), eTaskGetState(rcmdTask));
 
 #if (HAS_LORA)
   if (lmicTask != NULL)
-    ESP_LOGD(TAG, "LMiCtask %d bytes left | Taskstate = %d",
+    ESP_LOGD(TAG, "LMiCtask %d Bytes übrig | Taskstatus = %d",
              uxTaskGetStackHighWaterMark(lmicTask), eTaskGetState(lmicTask));
   if (lorasendTask != NULL)
-    ESP_LOGD(TAG, "Lorasendtask %d bytes left | Taskstate = %d",
+    ESP_LOGD(TAG, "Lorasendtask %d Bytes übrig | Taskstatus = %d",
              uxTaskGetStackHighWaterMark(lorasendTask),
              eTaskGetState(lorasendTask));
 #endif
-
+ESP_LOGD(TAG,"***************** SENSORDATEN ******************");
 #if (HAS_GPS)
-  if (GpsTask != NULL)
-    ESP_LOGD(TAG, "Gpsloop %d bytes left | Taskstate = %d",
+  if (GpsTask != NULL) {
+    ESP_LOGD(TAG,"---- Satelitendaten ---");
+    ESP_LOGD(TAG, "Gpsloop %d Bytes übrig | Taskstatus = %d",
              uxTaskGetStackHighWaterMark(GpsTask), eTaskGetState(GpsTask));
-    ESP_LOGD(TAG, "LATITUDE: %lf, LONGITUDE: %lf",  gps.location.lat(), gps.location.lng());
-    ESP_LOGD(TAG, "SATELITTES: %d", gps.satellites.value());
+    ESP_LOGD(TAG, "Latitude: %lf, Longitude: %lf",  gps.location.lat(), gps.location.lng());
+    ESP_LOGD(TAG, "Satelliten: %d", gps.satellites.value());
+    ESP_LOGD(TAG, "Altitude: %lf m", gps.altitude.meters());
+    ESP_LOGD(TAG,"-----------------------");
+    systemCfg.gps_latlng_valid = gps.location.isValid();
+    systemCfg.lat = gps.location.lat();
+    systemCfg.lon = gps.location.lng();
+    systemCfg.altitude = gps.altitude.meters();
+    systemCfg.sats = gps.satellites.value();
+
+  }
 #endif
 
 #ifdef HAS_SPI
   if (spiTask != NULL)
-    ESP_LOGD(TAG, "spiloop %d bytes left | Taskstate = %d",
+    ESP_LOGD(TAG, "spiloop %d Bytes übrig | Taskstate = %d",
              uxTaskGetStackHighWaterMark(spiTask), eTaskGetState(spiTask));
 #endif
 
@@ -90,6 +101,11 @@ void doHousekeeping() {
 #elif defined HAS_BME280
   ESP_LOGI(TAG, "BME280 Temp: %.2f°C | Humidity: %.2f | Pressure: %.0f",
            bme_status.temperature, bme_status.humidity, bme_status.pressure);
+           systemCfg.temp = bme_status.temperature;
+           systemCfg.press = bme_status.pressure;
+           systemCfg.hum = bme_status.humidity;
+           sort_chart_data("tempDatas", bme_status.temperature);
+           sort_chart_data("humdatas", bme_status.humidity);
 #elif defined HAS_BMP180
   ESP_LOGI(TAG, "BMP180 Temp: %.2f°C | Pressure: %.0f", bme_status.temperature,
            bme_status.pressure);
@@ -116,6 +132,7 @@ void doHousekeeping() {
 #if (HAS_SDS011)
   if (isSDS011Active) {
     sds011_loop();
+    
   } else {
     sds011_wakeup();
   }

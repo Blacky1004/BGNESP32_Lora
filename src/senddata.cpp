@@ -71,12 +71,11 @@ void sendData() {
 //            count.wifi_count, count.ble_count);
 
   while (bitmask) {
+    ESP_LOGD(TAG,"Verarbeite MASKE: %d", mask);
     switch (bitmask & mask) {
 
     case COUNT_DATA:
       payload.reset();
-
-
 
 #if (HAS_GPS)
       if (GPSPORT == COUNTERPORT) {

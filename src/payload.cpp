@@ -33,21 +33,14 @@ void PayloadConvert::addVoltage(uint16_t value) {
   buffer[cursor++] = lowByte(value);
 }
 
-void PayloadConvert::addConfig(configData_t value) {
+void PayloadConvert::addConfig(systemConfig_t value) {
   buffer[cursor++] = value.loradr;
   buffer[cursor++] = value.txpower;
   buffer[cursor++] = value.adrmode;
   buffer[cursor++] = value.screensaver;
   buffer[cursor++] = value.screenon;
   buffer[cursor++] = value.countermode;
-  buffer[cursor++] = highByte(value.rssilimit);
-  buffer[cursor++] = lowByte(value.rssilimit);
-  buffer[cursor++] = value.sendcycle;
-  buffer[cursor++] = value.wifichancycle;
-  //buffer[cursor++] = value.wifichanmap;
-  buffer[cursor++] = value.blescantime;
-  buffer[cursor++] = value.blescan;
-  buffer[cursor++] = value.wifiant;
+    buffer[cursor++] = value.sendcycle;
   buffer[cursor++] = highByte(value.sleepcycle);
   buffer[cursor++] = lowByte(value.sleepcycle);
   buffer[cursor++] = value.payloadmask;

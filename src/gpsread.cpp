@@ -100,7 +100,7 @@ void gps_storelocation(gpsStatus_t *gps_store) {
     gps_store->satellites = (uint8_t)gps.satellites.value();
     gps_store->hdop = (uint16_t)gps.hdop.value();
     gps_store->altitude = (int16_t)gps.altitude.meters();
-    systemCfg.gps_latlng_valid = true;
+    
   } else {
     ESP_LOGE(TAG, "Keine gültigen GPS Daten erhalten!");
     systemCfg.gps_latlng_valid = false;;

@@ -69,6 +69,9 @@ void lora_setupForNetwork(bool preJoin) {
              getSfName(updr2rps(LMIC.datarate)),
              getBwName(updr2rps(LMIC.datarate)),
              getCrName(updr2rps(LMIC.datarate)));
+        snprintf(systemCfg.radioParams, 40, "%s | %s | %s", getSfName(updr2rps(LMIC.datarate)),
+             getBwName(updr2rps(LMIC.datarate)),
+             getCrName(updr2rps(LMIC.datarate)));
     }
 }
 
@@ -158,7 +161,7 @@ void os_getDevEui(u1_t *buf) {
 void lora_send(void *pvParameters) {
     _ASSERT((uint32_t)pvParameters == 1); //FreeRTOS check
     MessageBuffer_t SendBuffer;
-
+    ESP_LOGD(TAG,"Sende Daten zum TTN...");
     while(1) {
         while(!LMIC.devaddr) {
             vTaskDelay(pdMS_TO_TICKS(500));
@@ -175,10 +178,11 @@ void lora_send(void *pvParameters) {
             #if (TIME_SYNC_LORASERVER)
                 if(SendBuffer.MessagePort == TIMEPORT)
                 {
-                    
+                    timesync_store(osticks2ms(os_getTime()), timesync_tx);
                 }
             #endif
             ESP_LOGI(TAG, "%d Bytes an LoRa gesendet.", SendBuffer.MessageSize);
+            systemCfg.last_payload = compileTime();
             xQueueReceive(LoraSendQueue, &SendBuffer, (TickType_t)0);
             break;
         case LMIC_ERROR_TX_BUSY:
@@ -186,7 +190,7 @@ void lora_send(void *pvParameters) {
             vTaskDelay(pdMS_TO_TICKS(500 + random(400)));
             break;
         case LMIC_ERROR_TX_FAILED:
-            ESP_LOGV(TAG, "Nachricht nich gesendet, TX fehlgeschlagen, versuche es später wieder,");
+            ESP_LOGV(TAG, "Nachricht nicht gesendet, TX fehlgeschlagen, versuche es später wieder,");
             vTaskDelay(pdMS_TO_TICKS(500 + random(400)));
             break;
         case LMIC_ERROR_TX_TOO_LARGE:
@@ -344,8 +348,11 @@ void myEventCallback(void *pUserData, ev_t ev) {
     }
 
     // add Lora send queue length to display
-    if (msgWaiting)
-        snprintf(lmic_event_msg + 14, LMIC_EVENTMSG_LEN - 14, "%2u", msgWaiting);
+    if (msgWaiting) {
+      systemCfg.lora_waitings = msgWaiting;
+      snprintf(lmic_event_msg + 14, LMIC_EVENTMSG_LEN - 14, "%2u", msgWaiting);
+    }
+        
 
     // print event
     ESP_LOGD(TAG, "%s", lmic_event_msg);

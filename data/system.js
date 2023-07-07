@@ -7,7 +7,8 @@ var hasInternet = false;
 var sensorDatas = {
     pm10: [0,0,0,0,0,0,0,0,0,0],
     pm25 : [0,0,0,0,0,0,0,0,0,0],
-    tmp: [0,0,0,0,0,0,0,0,0,0]
+    tmp: [0,0,0,0,0,0,0,0,0,0],
+    hum: [0,0,0,0,0,0,0,0,0,0]
 };
 var pmChart;
 var tcChart;
@@ -49,6 +50,10 @@ document.addEventListener("DOMContentLoaded", () => {
             {
                 label: 'Temperaturn in °C',
                 data: sensorDatas["tmp"]
+            },
+            {
+                label: 'Humidity in %',
+                data: sensorDatas["hum"]
             }
         ]
     };
@@ -64,9 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
     pmChart = new Chart(cPMChart, pmConfig);
     const cTcChart = document.getElementById("tempdaten");
     tcChart = new Chart(cTcChart, tcConfig);            
-    
-    document.getElementById("fszize").innerHTML =  formatSizeUnits(flashSize);
-    document.getElementById("freeheap").innerHTML = formatSizeUnits(heap) + " frei: " + formatSizeUnits(freeHeap);
+        
     
     setInterval(function() {
         lcnt = 0;
@@ -201,49 +204,54 @@ document.getElementById("checkgps").addEventListener("click", function(e) {
 
 
 function getConfigDatas(){
-    $.getJSON("/myconfig", function(response) {
-        document.getElementById("useLora").checked = response["lora"]["enabled"];
-        document.getElementById("devid").value = response["lora"]["devid"];
-        let strNKey="";
-        let strAppKey = "";
-        let devaddr = "";
-        if(response["lora"]["newskey"] != null) {
-            for(var i = 0; i < response["lora"]["newskey"].length; i++) {
-                strNKey += response["lora"]["newskey"][i].toString(16);
+    
+    getLoraInfo();
+    $.getJSON("/get_sensors", function(result) {
+        if(result["gps"])
+        {
+            if(result["gps"]["enabled"] && result["gps"]["valid"]){
+                document.getElementById("lat").value = result["gps"]["lat"];
+                document.getElementById("lng").value = result["gps"]["lng"];
             }
         }
-        if(response["lora"]["appskey"] != null) {
-            for(var i = 0; i < response["lora"]["appskey"].length; i++) {
-                strAppKey += response["lora"]["appskey"][i].toString(16);
-            }
+        if(result["cfg"]) {
+            document.getElementById("fsize").innerHTML = result["cfg"]["flash"] + "MB";
+            document.getElementById("fversion").innerHTML =  result["cfg"]["version"];
+            document.getElementById("fheap").innerHTML =  formatSizeUnits(result["cfg"]["freeheap"]) + " frei von " + formatSizeUnits(result["cfg"]["heap"]);
+            
         }
-        if(response["lora"]["devaddr"] != null) {
-            devaddr = response["lora"]["devaddr"].toString(16);
+        if(result["wlan"]) {
+            document.getElementById("wmode").innerHTML = result["wlan"]["mode"];
+            document.getElementById("wssid").innerHTML = result["wlan"]["ssid"];
+            document.getElementById("wip").innerHTML = result["wlan"]["ip"];
         }
-        document.getElementById("nwkskey").value = strNKey;
-        document.getElementById("appskey").value = strAppKey;
-        //document.getElementById("devaddr").value = devaddr;
+    });
 
-        document.getElementById("enableWlan").checked = response["wifi"]["enabled"];   
-        if(response["wifi"]["enabled"] == true && response["wifi"]["ssid"].length > 0) {
-            var wsel = document.getElementById("ssid");
-            for(var i=0; i < wsel.options.length; ++i){
-                if(wsel.options[i].text == response["wifi"]["ssid"]){
-                    wsel.options[i].selected = true;
+    $.getJSON("/get_wifi_list", function(result) {
+        let wifiList = '<option value="-1">--- Auswahl ---</option>';
+        if(result && result["wifis"] != undefined) {
+            //ist ein Eintrag ausgewählt? also irgendeiner ausser "-1";
+            var selBSSID = document.getElementById("ssid").value;
+            document.getElementById("ssid").innerHTML = "";            
+            $.each(result["wifis"], function(k, v) {
+                if(v["bssid"] != null) {
+                    var isselected = false;
+                    if(result["selected_bssid"] && result["selected_bssid"] == v["bssid"])
+                        isselected = true;
+                    wifiList += `<option value="${v["bssid"]}" ${isselected ? "selected" : ""}>${v["ssid"]}</option>`;    
                 }
-            }
-        }             
-        document.getElementById("ssidpasw").value = response["wifi"]["password"];
-        document.getElementById("lat").value = response["location"]["latitude"];
-        document.getElementById("lng").value = response["location"]["longitude"];
+            });
+            document.getElementById("ssid").innerHTML = wifiList;
+        }
     });
 }
 function ajaxCharts() {
-    $.getJSON("/getchartdatas", function(result) {
+    $.getJSON("/get_chartdatas", function(result) {
         sensorDatas = result;
         pmChart.data.datasets[0].data = sensorDatas["pm25"];
         pmChart.data.datasets[1].data = sensorDatas["pm10"];
         tcChart.data.datasets[0].data = sensorDatas["tmp"];
+        tcChart.data.datasets[1].data = sensorDatas["hum"];
         pmChart.update();
         tcChart.update();
     });
@@ -256,13 +264,19 @@ function checkwifi(){
         pasw: pasw,
         enabled : document.getElementById("enableWlan").checked
     };
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function(){
-        console.log(this.responseText);
-    }
-    xhttp.open("Post","/test_wifi", true);
-    xhttp.setRequestHeader("Content-Type", "application/json");
-    xhttp.send(JSON.stringify(json));
+    $.ajax({
+        url: "/save_wifi",
+            type: 'post',
+            dataType: "json",
+            contentType: "application/json",
+            data: JSON.stringify(json),
+            success: function(response) {
+                toastr.success("Die Speicherung deiner Standortdaten war erfolgreich.", "Erfolgreich", {timeOut: 5000})
+            },
+            error: function(error) {
+                toastr.error(error["message"], "Fehler!",   {timeOut: 5000});
+            }
+    });
 }
 function showConnections(){
     document.getElementById("lnkHome").classList.remove("active");
@@ -351,9 +365,109 @@ function checkConnectionAvailable(){
 }
 
 function getLoraInfo() {
-    $.getJSON("/lora_info", function(result) {
-        document.getElementById("lUplink").innerHTML = result["uplink"];
-        document.getElementById("lDownlink").innerHTML = result["downlink"];
+    $.getJSON("/get_lora_info", function(response) {
+        let loraOn = false;
+        document.getElementById("loramode").innerHTML = "";
+        document.getElementById("lorastatus").classList.remove("text-danger", "text-primary", "text-success");
+        document.getElementById("dlstatus").classList.remove("text-danger", "text-primary", "text-success");
+        //document.getElementById("devid").value = response["lora"]["devid"];
+        if(response) {
+            if(response["status"] > 0)
+                loraOn = true;
+            
+            switch(response["status"]) {
+                case 0: 
+                    document.getElementById("lorastatus").innerHTML = "n/a"; 
+                    document.getElementById("lorastatus").classList.add("text-danger"); 
+                    document.getElementById("dlstatus").innerHTML = "n/a"; 
+                    document.getElementById("dlstatus").classList.add("text-danger"); 
+                    break;
+                case 1:
+                    document.getElementById("lorastatus").innerHTML = "Initialisierung"; 
+                    document.getElementById("lorastatus").classList.add("text-primary"); 
+                    document.getElementById("dlstatus").innerHTML = "Initialisierung"; 
+                    document.getElementById("dlstatus").classList.add("text-primary"); 
+                    break;
+                case 2:
+                    document.getElementById("lorastatus").innerHTML = "Initialisiert";
+                    document.getElementById("lorastatus").classList.add("text-primary");
+                    document.getElementById("dlstatus").innerHTML = "Initialisiert";
+                    document.getElementById("dlstatus").classList.add("text-primary");
+                    break;
+                case 3:
+                    document.getElementById("lorastatus").innerHTML = "Joining";
+                    document.getElementById("lorastatus").classList.add("text-primary");
+                    document.getElementById("dlstatus").innerHTML = "Joining";
+                    document.getElementById("dlstatus").classList.add("text-primary");
+                   break;
+                case 5:
+                    document.getElementById("lorastatus").innerHTML = "Wait Join";
+                    document.getElementById("lorastatus").classList.add("text-primary"); 
+                    document.getElementById("dlstatus").innerHTML = "Wait Join";
+                    document.getElementById("dlstatus").classList.add("text-primary"); 
+                    break;
+                case 4:
+                    document.getElementById("lorastatus").innerHTML = "Joined";
+                    document.getElementById("lorastatus").classList.add("text-success");
+                    document.getElementById("dlstatus").innerHTML = "Joined";
+                    document.getElementById("dlstatus").classList.add("text-success");
+                    break;
+            }
+            if(response["mode"] == "OTAA") {
+                let otamode =`<div class="mb-3"><input type="checkbox" class="form-check-input" id="useLora" name="useLora" ${response["status"] > 0 ? "checked" : ""}/><label for="useLora">LoRaWAN verwenden</label></div>`;
+                                
+                let deveui = "";
+                if(response["deveui"] && response["deveui"].length > 0){
+                    for(var i = 0; i < response["deveui"].length; i++) {
+                        deveui += response["deveui"][i].toString(16);
+                    }
+                }
+                otamode += `<div class="mb-3"><label for="deveui">DeviceEUI</label><input id="deveui" name="deveui" class="form-control" value="${deveui.toUpperCase()}" placeholder="eui-0000000000000000" /></div>`;
+                
+                let appeui = "";
+                if(response["appeui"] && response["appeui"].length > 0){
+                    for(var i = 0; i < response["appeui"].length; i++) {
+                        appeui += response["appeui"][i].toString(16);
+                    }
+                }
+                otamode += `<div class="mb-3"><label for="appeui">AppEUI</label><input id="appeui" name="appeui" class="form-control" value="${appeui.toUpperCase()}" placeholder="eui-0000000000000000" /></div>`
+
+                let appkey= "";
+                if(response["appkey"] && response["appkey"].length > 0){
+                    for(var i = 0; i < response["appkey"].length; i++) {
+                        appkey += response["appkey"][i].toString(16);
+                    }
+                }      
+                otamode += `<div class="mb-3"><label for="appkey">AppKey<span class="text-danger">*</span></label><input type="text" class="form-control" id="appkey" name="appkey" value="${appkey.toUpperCase()}" required placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/></div>`;
+                document.getElementById("loramode").innerHTML = otamode;
+            }
+            if(response["devaddr"] && response["devaddr"].length > 0) {
+                document.getElementById("ldid").innerHTML = "0x" + response["devaddr"].toUpperCase();
+            } else {
+                document.getElementById("ldid").innerHTML = "-";
+            }
+            if(response["netid"] && response["netid"] > 0) {
+                document.getElementById("netid").innerHTML = response["netid"];
+            } else {
+                document.getElementById("netid").innerHTML = "-";
+            }
+            document.getElementById("lcycle").innerHTML = response["lcycle"] + " Sek"
+            document.getElementById("lqueue").innerHTML = response["lwaitings"];
+            if(response["lpayload"] && response["lpayload"] != 0) {
+               
+                var pdate = new Date(response["lpayload"]* 1000);
+                var day = pdate.getDay() < 10 ? "0"+pdate.getDay() : pdate.getDay();
+                var mon = pdate.getMonth() < 10 ? "0"+pdate.getMonth() : pdate.getMonth();
+                var hour = pdate.getHours() < 10 ? "0" + pdate.getHours() : pdate.getHours();
+                var minute = pdate.getMinutes() < 10 ? "0" + pdate.getMinutes() : pdate.getMinutes();
+                var seks = pdate.getSeconds() < 10 ? "0" + pdate.getSeconds() : pdate.getSeconds();
+                //document.getElementById("npl").innerHTML = `${day}.${mon}.${pdate.getFullYear()} ${hour}:${minute}:${seks}`;
+                document.getElementById("npl").innerHTML = `${pdate.toLocaleDateString("de-DE")} ${pdate.toLocaleTimeString("de-DE")}`;
+            } else {
+                document.getElementById("npl").innerHTML = "-";
+            }
+            document.getElementById("lradio").innerHTML = response["rparams"];
+        }                
     });
 }
 
