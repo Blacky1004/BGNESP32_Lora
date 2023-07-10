@@ -219,11 +219,11 @@ function getConfigDatas(){
             var selBSSID = document.getElementById("ssid").value;
             document.getElementById("ssid").innerHTML = "";            
             $.each(result["wifis"], function(k, v) {
-                if(v["bssid"] != null) {
+                if(v["ssid"] != null) {
                     var isselected = false;
                     if(result["selected_bssid"] && result["selected_bssid"] == v["bssid"])
                         isselected = true;
-                    wifiList += `<option value="${v["bssid"]}" ${isselected ? "selected" : ""}>${v["ssid"]}</option>`;    
+                    wifiList += `<option value="${v["ssid"]}" ${isselected ? "selected" : ""}>${v["ssid"]}</option>`;    
                 }
             });
             document.getElementById("ssid").innerHTML = wifiList;

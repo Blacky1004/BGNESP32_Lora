@@ -96,22 +96,22 @@ void webserver_init() {
         AsyncJsonResponse * response = new AsyncJsonResponse();
         //DynamicJsonDocument doc(1024);
         JsonObject root = response->getRoot();
-        JsonArray wl = root.createNestedArray("wifis");
-        for(wifi_network_t w: myWiFiList){
-            JsonObject o = wl.createNestedObject();
-            o["id"] = w.id;
-            o["ssid"] = w.ssid;
-            o["bssid"] = w.bssid;
-            o["rssi"] = w.rssi;
-            o["enc_type"] = w.encrytionType;
-            wl.add(o);
-        }
+        // JsonArray wl = root.createNestedArray("wifis");
+        // std::map<byte, std::string> wlist;
+        // int n = WiFi.scanNetworks();
+        // if(n > 0){
+        //     for(byte i = 0; i < n; i++) {
+        //         JsonObject o = wl.createNestedObject();
+        //         o["id"] = i;
+        //         o["ssid"] = WiFi.SSID(i);
+        //         wl.add(o);
+        //     }
+        // }
+        root["wifis"] = wifiWebList;
         root["mode"] = systemCfg.wifi_mode;
         root["status"] = systemCfg.actual_wifi_status;
         root["code"] = 200;
-        if(systemCfg.wifi_mode == WIFI_STA) {
-            root["selected_bssid"] = cfg.wifi_bssid;
-         }
+        
         //String json = "";
         //serializeJson(doc, json);
         //request->send(200, "application/json", json);
@@ -254,21 +254,7 @@ void webserver_init() {
         } else {
             cfg.wifi_mode = WIFI_STA;
             bool found = false;
-            for(wifi_network_t w: myWiFiList)
-            {
-                String snBssid = data["ssid"].as<String>();
-                char *cnBssid  = new char [snBssid.length() +1];
-                char * coBssid;
-                snprintf(coBssid, sizeof(cnBssid),(char *)w.bssid);
-                //strcpy(coBssid, String(w.bssid).c_str() );
-                if(coBssid == cnBssid){
-                    cfg.wifi_bssid =  w.bssid;
-                    cfg.wifi_enabled = true;
-                    strcpy(cfg.wifi_password, data["ssidpasw"].as<String>().c_str());
-                    strcpy(cfg.wifi_ssid,  w.ssid.c_str());
-                    found = true;
-                }
-            }
+            
             if(found){
                 saveConfig(false);
                 response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";

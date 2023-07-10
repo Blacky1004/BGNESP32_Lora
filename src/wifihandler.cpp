@@ -9,6 +9,7 @@ std::list<wifi_network_t> myWiFiList;
 Ticker wificycler;
 uint32_t chipId = 0;
 String mySSID = "";
+String wifiWebList;
 void setWiFiIRQ() { xTaskNotify(irqHandlerTask, WIFI_IRQ, eSetBits);}
 void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     snprintf(wifi_event_msg, 255, "%02X", info.wifi_ap_staipassigned.ip.addr);
@@ -21,6 +22,7 @@ void load_WiFiNetwork() {
         cfg.wifi_mode = WIFI_AP;
         //myWiFiList.clear();
     } else {
+        wifiWebList = "";
         myWiFiList.clear();
         for (int i = 0; i < n; i++)
         {
@@ -29,9 +31,10 @@ void load_WiFiNetwork() {
             w.encrytionType = WiFi.encryptionType(i);
             w.rssi = WiFi.RSSI(i);
             w.ssid = WiFi.SSID(i);
-            w.bssid = WiFi.BSSID(i);
             myWiFiList.push_back(w);  
-        }        
+        }  
+
+        
     }
 }
 

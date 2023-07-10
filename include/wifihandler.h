@@ -3,6 +3,8 @@
 
 #include "globals.h"
 #include <WiFi.h>
+#include <ArduinoJson.h>
+#include <AsyncJson.h>
 #include "config_bng.h"
 #include "irqhandler.h"
 #include <list>
@@ -11,11 +13,11 @@
 extern Ticker wificycler;
 extern char wifi_event_msg[255];
 extern TaskHandle_t WiFiTask;
+extern String wifiWebList;
 typedef struct {
     public:
     int id;
     String ssid;
-    uint8_t *bssid;
     int8_t rssi;
     wifi_auth_mode_t encrytionType;
 } wifi_network_t;
