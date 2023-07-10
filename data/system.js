@@ -97,22 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 3000);
 
 });
-document.getElementById("enableWlan").addEventListener('click', function(e){
-    if(checkConnectionAvailable()){
-        document.getElementById("enableWlan").checked = true;
-    }
-    var wlanNodes = document.getElementById("wlansetup").getElementsByTagName("*");
-    for(var i = 0; i < wlanNodes.length; i++) {
-        if(document.getElementById("enableWlan").checked){
-            wlanNodes[i].disabled = false;
-        }
-        else {
-            wlanNodes[i].disabled = true;
-            document.getElementById("enableWlan").disabled = false;
-            document.getElementById("savewlan").disabled = false;            
-        }        
-    }    
-});
+
 document.getElementById("useLora").addEventListener('click', function(e) {
     if(checkConnectionAvailable()){
         document.getElementById("useLora").checked = true;
@@ -159,7 +144,7 @@ document.getElementById("loracheck").addEventListener('click', function(e) {
         devid: devId,
         enabled: document.getElementById("useLora").checked
     };
-    var xhttp = new XMLHttpRequest();
+
     $.ajax({
         url: '/test_lora',
         type: 'post',
@@ -228,7 +213,7 @@ function getConfigDatas(){
     });
 
     $.getJSON("/get_wifi_list", function(result) {
-        let wifiList = '<option value="-1">--- Auswahl ---</option>';
+        let wifiList = '<option value="-1">--- Nur als Accesspoint ---</option>';
         if(result && result["wifis"] != undefined) {
             //ist ein Eintrag ausgewählt? also irgendeiner ausser "-1";
             var selBSSID = document.getElementById("ssid").value;
@@ -261,8 +246,7 @@ function checkwifi(){
     let pasw = document.getElementById("ssidpasw").value;
     let json = {
         ssid: ssid,
-        pasw: pasw,
-        enabled : document.getElementById("enableWlan").checked
+        pasw: pasw
     };
     $.ajax({
         url: "/save_wifi",
@@ -271,7 +255,24 @@ function checkwifi(){
             contentType: "application/json",
             data: JSON.stringify(json),
             success: function(response) {
-                toastr.success("Die Speicherung deiner Standortdaten war erfolgreich.", "Erfolgreich", {timeOut: 5000})
+                if(response && response["code"]) {
+                    switch(response["code"]) {
+                        case 200:
+                            toastr.success("Die Speicherung deiner Standortdaten war erfolgreich.", "Erfolgreich", {timeOut: 2500})
+                            setTimeout( function() {
+                                window.open("http:\\" + response["ip"]);
+                            }, 3000);
+                        break;
+
+                        case 300:
+                            toastr.warning(response["message"], "Warnung", {timeOut: 5000})
+                        default:
+                        case 400:
+                            toastr.error(response["message"], "FEHLER", {timeOut: 5000})
+                        break;
+                    }
+                }
+                
             },
             error: function(error) {
                 toastr.error(error["message"], "Fehler!",   {timeOut: 5000});

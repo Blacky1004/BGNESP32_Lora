@@ -215,61 +215,68 @@ void webserver_init() {
         request->send(200, "application/json", json);
         json= String();
     });
-    // AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
-    //     StaticJsonDocument<200> data;
-    //     if (json.is<JsonArray>())
-    //     {
-    //         data = json.as<JsonArray>();
-    //     }
-    //     else if (json.is<JsonObject>())
-    //     {
-    //         data = json.as<JsonObject>();
-    //     }
-    //     String response;
-    //     if((!data.containsKey("ssid") || data["ssid"] == ""  || data["ssid"] == "null") && data["enabled"] == true) {
-    //         response = "{\"code\": 400, \"message\":\"Es wurde keine SSID übergeben.\"}";
-    //         request->send(400, "application/json", response);
-    //     } 
-    //     else if(data["enabled"] == false) {
-    //         cfg.wifi_mode = WIFI_AP;
-    //         cfg.wifi_bssid = 0;
-    //         strcpy(cfg.wifi_password , "");
-    //         strcpy(cfg.wifi_ssid , "");
-    //         cfg.wifi_enabled = false;
-    //         response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";
-    //         request->send(200, "application/json", response);
-    //         saveConfig(false);
-    //         do_reset(false);
-    //     } else {
-    //         cfg.wifi_mode = WIFI_STA;
-    //         bool found = false;
-    //         for(wifi_network_t w: myWiFiList)
-    //         {
-    //             String snBssid = data["ssid"].as<String>();
-    //             char *cnBssid  = new char [snBssid.length() +1];
-    //             char * coBssid;
-    //             snprintf(coBssid, sizeof(cnBssid),(char *)w.bssid);
-    //             //strcpy(coBssid, String(w.bssid).c_str() );
-    //             if(coBssid == cnBssid){
-    //                 cfg.wifi_bssid =  w.bssid;
-    //                 cfg.wifi_enabled = true;
-    //                 strcpy(cfg.wifi_password, data["ssidpasw"].as<String>().c_str());
-    //                 strcpy(cfg.wifi_ssid,  w.ssid.c_str());
-    //                 found = true;
-    //             }
-    //         }
-    //         if(found){
-    //             saveConfig(false);
-    //             response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";
-    //             request->send(200, "application/json", response);
-    //             do_reset(false);
-    //         } else {
-    //             response = "{\"code\": 404, \"message\":\"Es wurde Kein Netzwerk mit dieser SSID gefunden.\"}";
-    //             request->send(200, "application/json", response);
-    //         }
-    //     }
-    // });
-    //server.addHandler(check_wifi_handler);
+    AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
+        StaticJsonDocument<200> data;
+        if (json.is<JsonArray>())
+        {
+            data = json.as<JsonArray>();
+        }
+        else if (json.is<JsonObject>())
+        {
+            data = json.as<JsonObject>();
+        }
+        String response;
+        if((!data.containsKey("ssid") || data["ssid"] == ""  || data["ssid"] == "null") && data["enabled"] == true) {
+            response = "{\"code\": 400, \"message\":\"Es wurde keine SSID übergeben.\"}";
+            request->send(400, "application/json", response);
+        } 
+        else if(data["ssid"].as<uint8_t>() == -1) {
+            cfg.wifi_mode = WIFI_AP;
+            cfg.wifi_bssid = 0;
+            if(cfg.wifi_password != data["ssidpasw"].as<String>().c_str()) {
+                strcpy(cfg.wifi_password, data["ssidpasw"].as<String>().c_str());
+                strcpy(cfg.wifi_ssid , systemCfg.hostname);
+                cfg.wifi_enabled = false;
+                
+                response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\", \"ip\": \"192.168.4.1\"}";
+                request->send(200, "application/json", response);
+                saveConfig(false);
+                delay(5000);
+                do_reset(false);
+            } else {
+                response = "{\"code\": 303, \"message\": \"Es wurden keine Änderungen erkannt.\"}";
+                request->send(200, "application/json", response);
+            }
+        } else {
+            cfg.wifi_mode = WIFI_STA;
+            bool found = false;
+            for(wifi_network_t w: myWiFiList)
+            {
+                String snBssid = data["ssid"].as<String>();
+                char *cnBssid  = new char [snBssid.length() +1];
+                char * coBssid;
+                snprintf(coBssid, sizeof(cnBssid),(char *)w.bssid);
+                //strcpy(coBssid, String(w.bssid).c_str() );
+                if(coBssid == cnBssid){
+                    cfg.wifi_bssid =  w.bssid;
+                    cfg.wifi_enabled = true;
+                    strcpy(cfg.wifi_password, data["ssidpasw"].as<String>().c_str());
+                    strcpy(cfg.wifi_ssid,  w.ssid.c_str());
+                    found = true;
+                }
+            }
+            if(found){
+                saveConfig(false);
+                response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";
+                request->send(200, "application/json", response);
+                do_reset(false);
+            } else {
+                response = "{\"code\": 404, \"message\":\"Es wurde Kein Netzwerk mit dieser SSID gefunden.\"}";
+                request->send(200, "application/json", response);
+            }
+        }
+    });
+    server.addHandler(check_wifi_handler);
     #pragma endregion
 
     server.begin();

@@ -84,8 +84,8 @@ void gen_lora_deveui(uint8_t *pdeveui) {
   // will remain the same as MAC address
   // MAC is 6 bytes, devEUI 8, set first 2 ones
   // with an arbitrary value
-  *p++ = 0xFF;
-  *p++ = 0xFE;
+  *p++ = 0x0A;
+  *p++ = 0x04;
   // Then next 6 bytes are mac address reversed
   for (i = 0; i < 6; i++) {
     *p++ = dmac[5 - i];
