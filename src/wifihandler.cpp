@@ -19,19 +19,19 @@ void load_WiFiNetwork() {
     if(n == 0) {
         ESP_LOGW(TAG, "Keine Netzwerke gefunden!");
         cfg.wifi_mode = WIFI_AP;
-        myWiFiList.clear();
+        //myWiFiList.clear();
     } else {
         myWiFiList.clear();
         for (int i = 0; i < n; i++)
         {
             wifi_network_t w;
-            w.bssid = WiFi.BSSID();
             w.id = i;
             w.encrytionType = WiFi.encryptionType(i);
-            w.rssi = WiFi.RSSI();
-            w.ssid = WiFi.SSID();
-            myWiFiList.push_back(w);            
-        }        
+            w.rssi = WiFi.RSSI(i);
+            w.ssid = WiFi.SSID(i);
+            w.bssid = WiFi.BSSID(i);
+            myWiFiList.push_back(w);  
+         }        
     }
 }
 
@@ -100,7 +100,7 @@ int wifi_init() {
                     ESP_LOGI(TAG, "lokale IP: %s", WiFi.localIP().toString());
                     systemCfg.wifi_ready = true;
                 } else {
-                    ESP_LOGW(TAG, "Konnte keine Verbindung zu SSID '%s' aufbauen, starte AccessPoint.", WiFi.SSID());
+                    ESP_LOGW(TAG, "Konnte keine Verbindung zu SSID '%s' aufbauen, starte AccessPoint.", cfg.wifi_ssid);
                     status = startAP();
                 }    /* code */
             }
