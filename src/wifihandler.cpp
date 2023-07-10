@@ -31,7 +31,7 @@ void load_WiFiNetwork() {
             w.ssid = WiFi.SSID(i);
             w.bssid = WiFi.BSSID(i);
             myWiFiList.push_back(w);  
-         }        
+        }        
     }
 }
 

@@ -99,11 +99,11 @@ void PayloadConverter::addBME(bmeStatus_t value) {
 
 void PayloadConverter::addSDS(sdsStatus_t sds) {
 #if (HAS_SDS011)
-  char tempBuffer[10 + 1];
-  sprintf(tempBuffer, ",%5.1f", sds.pm10);
-  addChars(tempBuffer, strlen(tempBuffer));
-  sprintf(tempBuffer, ",%5.1f", sds.pm25);
-  addChars(tempBuffer, strlen(tempBuffer));
+  float pm10 = 0.0;
+  float pm25 = 0.0;
+  int pm10_t =((int)( sds.pm10 * 10 ));
+  int pm25_t = ((int)(sds.pm25 * 10));
+  
 #endif // HAS_SDS011
 }
 void PayloadConverter::addTime(time_t value) {

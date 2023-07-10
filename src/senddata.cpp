@@ -65,109 +65,106 @@ void sendData() {
 #if (HAS_SDS011)
   sdsStatus_t sds_status;
 #endif
-//   struct count_payload_t count = ;
-//       //count_from_libpax; // copy values from global libpax var
-//   ESP_LOGD(TAG, "Sending count results: pax=%d / wifi=%d / ble=%d", count.pax,
-//            count.wifi_count, count.ble_count);
 
-  while (bitmask) {
+while (bitmask) {
     ESP_LOGD(TAG,"Verarbeite MASKE: %d", mask);
     switch (bitmask & mask) {
 
     case COUNT_DATA:
       payload.reset();
 
-#if (HAS_GPS)
-      if (GPSPORT == COUNTERPORT) {
-        // send GPS position only if we have a fix
-        if (gps_hasfix()) {
-          ESP_LOGD(TAG,"Speichere GPS Payload...");
-          gps_storelocation(&gps_status);
-          payload.addGPS(gps_status);
-        } else
-          ESP_LOGD(TAG, "No valid GPS position");
-      } else {
-        ESP_LOGD(TAG, "GPSPORT nicht gleich!");
-      }
-#endif
+      #if (HAS_GPS)
+            if (GPSPORT == COUNTERPORT) {
+              // send GPS position only if we have a fix
+              if (gps_hasfix()) {
+                ESP_LOGD(TAG,"Speichere GPS Payload...");
+                gps_storelocation(&gps_status);
+                payload.addGPS(gps_status);
+              } else
+                ESP_LOGD(TAG, "No valid GPS position");
+            } else {
+              ESP_LOGD(TAG, "GPSPORT nicht gleich!");
+            }
+      #endif
 
 
 
-#if (HAS_SDS011)
-      sds011_store(&sds_status);
-      payload.addSDS(sds_status);
-#endif
+      #if (HAS_SDS011)
+            sds011_store(&sds_status);
+            payload.addSDS(sds_status);
+            SendPayload(SENSOR1PORT);
+      #endif
 
-#ifdef HAS_DISPLAY
-      //dp_plotCurve(count.pax, true);
-#endif
+      #ifdef HAS_DISPLAY
+            //dp_plotCurve(count.pax, true);
+      #endif
 
-#if (HAS_SDCARD)
-      sdcardWriteData(count.wifi_count, count.ble_count
-#if (defined BAT_MEASURE_ADC || defined HAS_PMU)
-                      ,
-                      read_voltage()
-#endif
-      );
-#endif // HAS_SDCARD
+      #if (HAS_SDCARD)
+            sdcardWriteData(count.wifi_count, count.ble_count
+      #if (defined BAT_MEASURE_ADC || defined HAS_PMU)
+                            ,
+                            read_voltage()
+      #endif
+            );
+      #endif // HAS_SDCARD
       ESP_LOGI(TAG, "Sende Payload");
       SendPayload(COUNTERPORT);
       break; // case COUNTDATA
 
-#if (HAS_BME)
-    case MEMS_DATA:
-      payload.reset();
-      payload.addBME(bme_status);
-      SendPayload(BMEPORT);
-      break;
-#endif
+      #if (HAS_BME)
+          case MEMS_DATA:
+            payload.reset();
+            payload.addBME(bme_status);
+            SendPayload(BMEPORT);
+            break;
+      #endif
 
-#if (HAS_GPS)
-    case GPS_DATA:
-      if (GPSPORT != COUNTERPORT) {
-        // send GPS position only if we have a fix
-        if (gps_hasfix()) {
-          gps_storelocation(&gps_status);
-          payload.reset();
-          payload.addGPS(gps_status);
-          SendPayload(GPSPORT);
-        } else
-          ESP_LOGD(TAG, "No valid GPS position");
-      }
-      break;
-#endif
+      #if (HAS_GPS)
+          case GPS_DATA:
+            if (GPSPORT != COUNTERPORT) {
+              // send GPS position only if we have a fix
+              if (gps_hasfix()) {
+                gps_storelocation(&gps_status);
+                payload.reset();
+                payload.addGPS(gps_status);
+                SendPayload(GPSPORT);
+              } else
+                ESP_LOGD(TAG, "No valid GPS position");
+            }
+            break;
+      #endif
 
-#if (HAS_SENSORS)
-#if (HAS_SENSOR_1)
-    case SENSOR1_DATA:
-      payload.reset();
-      payload.addSensor(sensor_read(1));
-      SendPayload(SENSOR1PORT);
-      break;
-#endif
-#if (HAS_SENSOR_2)
-    case SENSOR2_DATA:
-      payload.reset();
-      payload.addSensor(sensor_read(2));
-      SendPayload(SENSOR2PORT);
-      break;
-#endif
-#if (HAS_SENSOR_3)
-    case SENSOR3_DATA:
-      payload.reset();
-      payload.addSensor(sensor_read(3));
-      SendPayload(SENSOR3PORT);
-      break;
-#endif
-#endif
+      #if (HAS_SENSORS)
+      #if (HAS_SENSOR_1)
+          case SENSOR1_DATA:
+            payload.reset();
+            payload.addSensor(sensor_read(1));
+            SendPayload(SENSOR1PORT);
+            break;
+      #endif
+      #if (HAS_SENSOR_2)
+          case SENSOR2_DATA:
+            payload.reset();
+            payload.addSensor(sensor_read(2));
+            SendPayload(SENSOR2PORT);
+            break;
+      #endif
+      #if (HAS_SENSOR_3)
+          case SENSOR3_DATA:
+            payload.reset();
+            payload.addSensor(sensor_read(3));
+            SendPayload(SENSOR3PORT);
+            break;
+      #endif
+      #endif
 
-#if (defined BAT_MEASURE_ADC || defined HAS_PMU)
-    case BATT_DATA:
-      payload.reset();
-      payload.addVoltage(read_voltage());
-      SendPayload(BATTPORT);
-      break;
-#endif
+      #if (defined BAT_MEASURE_ADC || defined HAS_PMU)
+          case BATT_DATA:
+            payload.reset();
+            payload.addVoltage(read_voltage());
+            SendPayload(BATTPORT);
+            break;
+      #endif
     } // switch
     bitmask &= ~mask;
     mask <<= 1;

@@ -65,6 +65,7 @@ void setup() {
   if(RTC_runmode == RUNMODE_MAINTENANCE)
     start_boot_menu();
     // start rcommand processing task
+
   ESP_LOGI(TAG, "Starting rcommand interpreter...");
   rcmd_init();
   #if (HAS_GPS)

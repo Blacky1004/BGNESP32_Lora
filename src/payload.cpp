@@ -104,16 +104,15 @@ void PayloadConvert::addSensor(uint8_t buf[]) {
 
 void PayloadConvert::addBME(bmeStatus_t value) {
 #if (HAS_BME)
-  int16_t temperature = (int16_t)(value.temperature); // float -> int
-  uint16_t humidity = (uint16_t)(value.humidity);     // float -> int
-  uint16_t pressure = (uint16_t)(value.pressure);     // float -> int
-  uint16_t iaq = (uint16_t)(value.iaq);               // float -> int
+  int temperature = (int16_t)(value.temperature * 100); // float -> int
+  byte humidity = (byte)(value.humidity *2);     // float -> int
+  int pressure = (int)(value.pressure * 10);     // float -> int
+  int iaq = (uint16_t)(value.iaq);               // float -> int
   buffer[cursor++] = highByte(temperature);
   buffer[cursor++] = lowByte(temperature);
   buffer[cursor++] = highByte(pressure);
   buffer[cursor++] = lowByte(pressure);
-  buffer[cursor++] = highByte(humidity);
-  buffer[cursor++] = lowByte(humidity);
+  buffer[cursor++] = humidity;
   buffer[cursor++] = highByte(iaq);
   buffer[cursor++] = lowByte(iaq);
 #endif
@@ -121,11 +120,13 @@ void PayloadConvert::addBME(bmeStatus_t value) {
 
 void PayloadConvert::addSDS(sdsStatus_t sds) {
 #if (HAS_SDS011)
-  char tempBuffer[10 + 1];
-  sprintf(tempBuffer, ",%5.1f", sds.pm10);
-  addChars(tempBuffer, strlen(tempBuffer));
-  sprintf(tempBuffer, ",%5.1f", sds.pm25);
-  addChars(tempBuffer, strlen(tempBuffer));
+    int pm10 = ((int)(sds.pm10 *100));
+    int pm25 = ((int)(sds.pm25 * 100));
+    buffer[cursor++] = highByte(pm10);
+    buffer[cursor++] = lowByte(pm10);
+    buffer[cursor++] = highByte(pm25);
+    buffer[cursor++] = lowByte(pm25);
+    ESP_LOGD(TAG, "Adde SDS für Payload. PM10= %d; PM25 = %d", pm10, pm25);
 #endif // HAS_SDS011
 }
 

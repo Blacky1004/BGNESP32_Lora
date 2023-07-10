@@ -93,8 +93,10 @@ void webserver_init() {
 
     #pragma region Ajaxabfragen
     server.on("/get_wifi_list", HTTP_GET, [](AsyncWebServerRequest *request) {
-        DynamicJsonDocument doc(1024);
-        JsonArray wl = doc.createNestedArray("wifis");
+        AsyncJsonResponse * response = new AsyncJsonResponse();
+        //DynamicJsonDocument doc(1024);
+        JsonObject root = response->getRoot();
+        JsonArray wl = root.createNestedArray("wifis");
         for(wifi_network_t w: myWiFiList){
             JsonObject o = wl.createNestedObject();
             o["id"] = w.id;
@@ -104,16 +106,18 @@ void webserver_init() {
             o["enc_type"] = w.encrytionType;
             wl.add(o);
         }
-        doc["mode"] = systemCfg.wifi_mode;
-        doc["status"] = systemCfg.actual_wifi_status;
-        doc["code"] = 200;
+        root["mode"] = systemCfg.wifi_mode;
+        root["status"] = systemCfg.actual_wifi_status;
+        root["code"] = 200;
         if(systemCfg.wifi_mode == WIFI_STA) {
-            doc["selected_bssid"] = cfg.wifi_bssid;
+            root["selected_bssid"] = cfg.wifi_bssid;
          }
-        String json = "";
-        serializeJson(doc, json);
-        request->send(200, "application/json", json);
-        json= String();
+        //String json = "";
+        //serializeJson(doc, json);
+        //request->send(200, "application/json", json);
+        //json= String();
+        response->setLength();
+        request->send(response);
     });
     server.on("/get_lora_info", HTTP_GET, [](AsyncWebServerRequest *request) {
         DynamicJsonDocument doc(1024);

@@ -3,7 +3,7 @@
 
 
 TaskHandle_t irqHandlerTask = NULL;
-
+Ticker irqcycler;
 // irq handler task, handles all our application level interrupts
 void irqHandler(void *pvParameters) {
   _ASSERT((uint32_t)pvParameters == 1); // FreeRTOS check
@@ -78,6 +78,7 @@ void irqHandler(void *pvParameters) {
 
     // is time to send the payload?
     if (irqSource & SENDCYCLE_IRQ) {
+      ESP_LOGD(TAG, "Sende Daten...");
       sendData();
       // goto sleep if we have a sleep cycle
       if (cfg.sleepcycle)
