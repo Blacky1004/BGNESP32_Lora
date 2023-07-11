@@ -22,11 +22,16 @@
 #define MY_DISPLAY_SDA 21
 #define MY_DISPLAY_SCL 13
 #define MY_DISPLAY_ADDR 0x3C
+#define MY_DISPLAY_WIDTH 128
+#define MY_DISPLAY_HEIGHT 64
+#define MY_DISPLAY_RST (16)
+#define MY_OLED_SDA (4)
+#define MY_OLED_SCL (15)
 
 #define HAS_GPS 1
 //#define GPS_INT GPIO_NUM_37
 #define GPS_SERIAL_TX 17
-#define GPS_SERIAL_RX 16
+#define GPS_SERIAL_RX 12 //16
 
 #define HAS_WIFI 1
 

@@ -267,9 +267,9 @@ void get_status(uint8_t val[]) {
                     // temperatureRead(),
                     getFreeRAM(), rtc_get_reset_reason(0), RTC_restarts);
 #else
-  // payload.addStatus(read_voltage(), (uint64_t)(uptime() / 1000ULL),
-  //                   temperatureRead(), getFreeRAM(), rtc_get_reset_reason(0),
-  //                   RTC_restarts);
+  payload.addStatus(0, (uint64_t)(uptime() / 1000ULL),
+                    temperatureRead(), getFreeRAM(), rtc_get_reset_reason(0),
+                    RTC_restarts);
 #endif
   SendPayload(STATUSPORT);
 }

@@ -324,7 +324,7 @@ void myEventCallback(void *pUserData, ev_t ev) {
         // do the after join network-specific setup.
         systemCfg.lora_status = LORA_JOINED;
         lora_setupForNetwork(false);
-        irqcycler.attach(30, setSendIRQ); 
+        irqcycler.attach(cfg.sendcycle, setSendIRQ); 
         break;
 
         case EV_JOIN_FAILED:

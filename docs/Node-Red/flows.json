@@ -1,0 +1,373 @@
+[
+    {
+        "id": "45217ae9c6042e63",
+        "type": "tab",
+        "label": "ESP 32 LoRa Module",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "9c105726.613a58",
+        "type": "mqtt in",
+        "z": "45217ae9c6042e63",
+        "name": "Abfrage -> TTN",
+        "topic": "#",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "2a15ab6f.ab2244",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 300,
+        "y": 160,
+        "wires": [
+            [
+                "7ac05a16e22fa2a8",
+                "625b779e1bf78dc3"
+            ]
+        ]
+    },
+    {
+        "id": "7ac05a16e22fa2a8",
+        "type": "debug",
+        "z": "45217ae9c6042e63",
+        "name": "debug 19",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "625b779e1bf78dc3",
+        "type": "function",
+        "z": "45217ae9c6042e63",
+        "name": "function 1",
+        "func": "let temp = 0;\nlet pressure = 0;\nlet hum = 0;\nif(msg.payload != undefined && msg.payload.uplink_message != undefined) {\n    let fPort = msg.payload.uplink_message.f_port;\n    switch(fPort) {\n        case 7:\n            flow.set(\"temp\", msg.payload.uplink_message.decoded_payload.temperature);\n            flow.set(\"hum\", msg.payload.uplink_message.decoded_payload.humidity);\n            flow.set(\"press\", msg.payload.uplink_message.decoded_payload.pressure);\n        break;\n        case 10:\n            flow.set(\"pm10\", msg.payload.uplink_message.decoded_payload.pm10);\n            flow.set(\"pm25\", msg.payload.uplink_message.decoded_payload.pm25);\n        break;\n    }\n}\n\nlet msg1 = {\n    payload: flow.get(\"temp\")   \n}\nlet msg2 = {\n    payload: flow.get(\"hum\")   \n}\nlet msg3 = {\n    payload: flow.get(\"press\")\n}\nlet msg4 = {\n    payload: flow.get(\"pm10\")\n}\nlet msg5 = {\n    payload: flow.get(\"pm25\")\n}\nlet tempChart = {\n    payload:  flow.get(\"temp\"),\n    label: \"Temperatur °C\"\n}\nlet pmChart = [\n    {\n        topic: \"PM 10\", payload: flow.get(\"pm10\")\n    },\n    {\n        topic: \"PM 2.5\", payload: flow.get(\"pm25\")\n    }\n];\n\nreturn[msg1, msg2,msg3, msg4, msg5, tempChart, pmChart];",
+        "outputs": 7,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 260,
+        "wires": [
+            [
+                "f01c54889753f457"
+            ],
+            [
+                "9933a6ec2f11c78b"
+            ],
+            [
+                "8859e7fd3c10f91b"
+            ],
+            [
+                "6bd11865b71a8eb3"
+            ],
+            [
+                "12d048b804814268"
+            ],
+            [
+                "a1a9c57523bfd0d5"
+            ],
+            [
+                "4ef05caab6f03962"
+            ]
+        ]
+    },
+    {
+        "id": "f01c54889753f457",
+        "type": "ui_gauge",
+        "z": "45217ae9c6042e63",
+        "name": "Temperaturanzeige",
+        "group": "d64e17a5a082b017",
+        "order": 2,
+        "width": "3",
+        "height": "2",
+        "gtype": "gage",
+        "title": "Temperatur",
+        "label": "°C",
+        "format": "{{value}}",
+        "min": "-30",
+        "max": "100",
+        "colors": [
+            "#0953b3",
+            "#07da0a",
+            "#ca3838"
+        ],
+        "seg1": "20",
+        "seg2": "40",
+        "className": "",
+        "x": 890,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "6e2f779d5ddb32d5",
+        "type": "function",
+        "z": "45217ae9c6042e63",
+        "name": "function 2",
+        "func": "flow.set(\"temp\", 0);",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8859e7fd3c10f91b",
+        "type": "ui_text",
+        "z": "45217ae9c6042e63",
+        "group": "d64e17a5a082b017",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Luftdruck",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "x": 860,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "9933a6ec2f11c78b",
+        "type": "ui_gauge",
+        "z": "45217ae9c6042e63",
+        "name": "",
+        "group": "d64e17a5a082b017",
+        "order": 3,
+        "width": "3",
+        "height": "2",
+        "gtype": "gage",
+        "title": "Luftfeuchte",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "100",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "className": "",
+        "x": 870,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "6bd11865b71a8eb3",
+        "type": "ui_gauge",
+        "z": "45217ae9c6042e63",
+        "name": "",
+        "group": "d64e17a5a082b017",
+        "order": 5,
+        "width": "3",
+        "height": "2",
+        "gtype": "gage",
+        "title": "Feinstaub 10",
+        "label": "µg/m³",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "450",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "className": "",
+        "x": 870,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "12d048b804814268",
+        "type": "ui_gauge",
+        "z": "45217ae9c6042e63",
+        "name": "",
+        "group": "d64e17a5a082b017",
+        "order": 5,
+        "width": "3",
+        "height": "2",
+        "gtype": "gage",
+        "title": "Feinstaub 25",
+        "label": "µg/m³",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "450",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "className": "",
+        "x": 870,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "a1a9c57523bfd0d5",
+        "type": "ui_chart",
+        "z": "45217ae9c6042e63",
+        "name": "",
+        "group": "f1da17eea60e80f9",
+        "order": 7,
+        "width": "0",
+        "height": "0",
+        "label": "Temperaturen",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "-30",
+        "ymax": "100",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 880,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4ef05caab6f03962",
+        "type": "ui_chart",
+        "z": "45217ae9c6042e63",
+        "name": "",
+        "group": "f1da17eea60e80f9",
+        "order": 7,
+        "width": 0,
+        "height": 0,
+        "label": "Feinstaubdaten",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "step",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 880,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2a15ab6f.ab2244",
+        "type": "mqtt-broker",
+        "name": "eu.thethings.network:1883",
+        "broker": "eu1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "2",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "d64e17a5a082b017",
+        "type": "ui_group",
+        "name": "Aktuelle Werte",
+        "tab": "b0361824dd7a2b1f",
+        "order": 1,
+        "disp": true,
+        "width": "13",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "f1da17eea60e80f9",
+        "type": "ui_group",
+        "name": "Verlauf",
+        "tab": "b0361824dd7a2b1f",
+        "order": 2,
+        "disp": true,
+        "width": "13",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "b0361824dd7a2b1f",
+        "type": "ui_tab",
+        "name": "Bürgernetz Ger-Greiz",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]

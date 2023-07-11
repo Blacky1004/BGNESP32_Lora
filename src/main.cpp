@@ -57,6 +57,12 @@ void setup() {
   if (RTC_runmode == RUNMODE_POWERCYCLE)
     i2c_scan();
 
+#ifdef HAS_DISPLAY
+  strcat_P(features, " DISP");
+  DisplayIsOn = cfg.screenon;
+  // display verbose info only after a coldstart (note: blocking call!)
+  dp_init(RTC_runmode == RUNMODE_POWERCYCLE ? true : false);
+#endif
   #if (BOOTMENU)
     if(RTC_runmode == RUNMODE_POWERCYCLE)
       start_boot_menu();
@@ -126,7 +132,17 @@ void setup() {
   // starting timers and interrupts
   _ASSERT(irqHandlerTask != NULL); // has interrupt handler task started?
   ESP_LOGI(TAG, "Starte Timer...");
-
+// display interrupt
+#ifdef HAS_DISPLAY
+  //dp_clear();
+  //dp_contrast(DISPLAYCONTRAST);
+  // https://techtutorialsx.com/2017/10/07/esp32-arduino-timer-interrupts/
+  // prescaler 80 -> divides 80 MHz CPU freq to 1 MHz, timer 0, count up
+  displayIRQ = timerBegin(0, 80, true);
+  timerAttachInterrupt(displayIRQ, &DisplayIRQ, false);
+  timerAlarmWrite(displayIRQ, DISPLAYREFRESH_MS * 1000, true);
+  timerAlarmEnable(displayIRQ);
+#endif
 #if ((HAS_LORA_TIME) || (HAS_GPS) || defined HAS_RTC)
   time_init();
   strcat_P(features, " TIME");

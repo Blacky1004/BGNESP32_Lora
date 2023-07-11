@@ -36,8 +36,8 @@ void irqHandler(void *pvParameters) {
 
 // display needs refresh?
 #ifdef HAS_DISPLAY
-    // if (irqSource & DISPLAY_IRQ)
-    //   dp_refresh();
+    if (irqSource & DISPLAY_IRQ)
+      dp_refresh();
 #endif
 
 // LED Matrix display needs refresh?

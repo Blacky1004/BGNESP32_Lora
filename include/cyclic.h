@@ -5,6 +5,7 @@
 #include "senddata.h"
 #include "rcommand.h"
 #include "bmesensor.h"
+#include "display.h"
 #include "sds01read.h"
 #include "reset.h"
 

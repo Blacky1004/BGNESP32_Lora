@@ -6,6 +6,7 @@
 
 #include "i2c.h"
 #include "lorawan.h"
+#include "display.h"
 #include "sds01read.h"
 
 void reset_rtc_vars(void);
