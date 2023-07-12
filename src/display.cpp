@@ -6,7 +6,7 @@
 static uint8_t plotbuf[PLOTBUFFERSIZE] = {0};
 uint8_t DisplayIsOn = 0;
 hw_timer_t *displayIRQ = NULL;
-Adafruit_SSD1306 display(MY_DISPLAY_WIDTH, MY_DISPLAY_HEIGHT, &Wire1, OLED_RST);
+Adafruit_SSD1306 display(MY_DISPLAY_WIDTH, MY_DISPLAY_HEIGHT, &Wire1, -1);
 #if (HAS_DISPLAY) == 1
 
 #else 
@@ -20,19 +20,16 @@ void dp_setup(int contrast) {
     delay(20);
     digitalWrite(OLED_RST, HIGH);
 
-    ESP_LOGD(TAG,"Setup Display....");
+    ESP_LOGD(TAG, "Setup Display....");
 
     Wire1.begin(OLED_SDA, OLED_SCL);
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) {
+    if(!display.begin(SSD1306_SWITCHCAPVCC, MY_DISPLAY_ADDR, false, false)) {
         ESP_LOGE(TAG, "DISPLAY Failed!");
     }
-
-    display.clearDisplay();
-    display.setTextColor(WHITE);
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    display.print(" FEINSTAUB ");
     display.display();
+    delay(2500);
+    display.clearDisplay();
+    
 #endif
 //dp_clear();
 //if(contrast)
@@ -46,15 +43,18 @@ void dp_init(bool verbose) {
         #if (VERBOSE)
         esp_chip_info_t chip_info;
         esp_chip_info(&chip_info);
-        // dp_setFont(MY_FONT_NORMAL);
-        // dp->printf("Software v%s\r\n", PROGVERSION);
-        // dp->printf("ESP32 %d cores\r\n", chip_info.cores);
-        // dp->printf("Chip Rev.%d\r\n", chip_info.revision);
-        // dp->printf("%dMB %s Flash", spi_flash_get_chip_size() / (1024 * 1024),
-        //        (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "int." : "ext.");
-        // dp_dump();
-        // delay(2000);
-        // dp_clear();
+        display.setTextColor(WHITE);
+        display.setTextSize(1);
+        display.setTextWrap(false);
+        display.setCursor(0,0);
+        display.printf("Software v%s\r\n", PROGVERSION);
+        display.printf("ESP32 %d cores\r\n", chip_info.cores);
+        display.printf("Chip Rev.%d\r\n", chip_info.revision);
+        display.printf("%dMB %s Flash", spi_flash_get_chip_size() / (1024 * 1024),
+               (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "int." : "ext.");
+        display.display();        
+        delay(2000);
+        display.clearDisplay();
         #endif //VERBOSE
     
     #if (HAS_LORA)
@@ -81,6 +81,8 @@ void dp_init(bool verbose) {
         // give user some time to read or take picture
         //dp_dump();
     #if !(BOOTMENU)
+    display.drawBitmap(20,0, lcdlogo, 91,64, WHITE);
+    display.display();
         delay(8000);
     #endif
 
@@ -133,18 +135,55 @@ void dp_refresh(bool nextPage) {
             // dp_dump();
             display.clearDisplay();
             display.setCursor(0,0);
-            display.setTextSize(2);
-            display.print("Display 1");
+            display.setTextWrap(false);
+            display.setTextSize(1);
+            display.printf("Net:%06X   Pwr:%2u\r\n", LMIC.netid & 0x001FFFFF,
+               LMIC.radio_txpow);
+            display.printf("Dev:%08X DR:%1u\r\n", LMIC.devaddr, LMIC.datarate);
+            display.printf("ChMsk:%04X Nonce:%04X\r\n", LMIC.channelMap, LMIC.devNonce);
+            display.printf("fUp:%-6u fDn:%-6u\r\n", LMIC.seqnoUp ? LMIC.seqnoUp - 1 : 0,
+               LMIC.seqnoDn ? LMIC.seqnoDn - 1 : 0);
+            display.printf("SNR:%-5d  RSSI:%-5d", (LMIC.snr + 2) / 4, LMIC.rssi);
             display.display();
             break;
         
         case 1:
             display.clearDisplay();
             display.setCursor(0,0);
-            display.setTextSize(2);
-            display.print("Display 2");
+            display.setTextWrap(false);
+            display.setTextSize(1);
+            display.printf("PM 10: %-6.1f\r\n", systemCfg.pm10);
+            display.printf("PM 2.5: %-6.1f\r\n", systemCfg.pm25);
             display.display();
 
+            break;
+        case 2:
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.setTextWrap(false);
+            display.setTextSize(1);
+            display.printf("TMP %-6.1f\r\n", bme_status.temperature);
+            display.printf("HUM %-6.1f\r\n", bme_status.humidity);
+            display.printf("PRS %-6.1f\r\n", bme_status.pressure);            
+            display.display();
+
+
+            break;
+        case 3:
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.setTextWrap(false);
+            display.setTextSize(1);
+
+            display.setCursor(0, 24);
+            display.printf("%u Sats", gps.satellites.value());
+            display.printf(gps_hasfix() ? "         " : " - No fix");
+            display.setCursor(0, 0);
+            display.printf("%c%09.6f\r\n", gps.location.rawLat().negative ? 'S' : 'N',
+                        gps.location.lat());
+            display.printf("%c%09.6f", gps.location.rawLng().negative ? 'W' : 'E',
+                        gps.location.lng());
+            display.display();
             break;
         default:
             break;

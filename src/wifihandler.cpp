@@ -10,6 +10,8 @@ Ticker wificycler;
 uint32_t chipId = 0;
 String mySSID = "";
 String wifiWebList;
+wl_status_t lastStatus;
+
 void setWiFiIRQ() { xTaskNotify(irqHandlerTask, WIFI_IRQ, eSetBits);}
 void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     snprintf(wifi_event_msg, 255, "%02X", info.wifi_ap_staipassigned.ip.addr);
@@ -70,6 +72,7 @@ int startAP() {
         systemCfg.wifi_ready = false;
         return 0;
     }
+    lastStatus = WiFi.status();
 }
 int wifi_init() {
     int status = 0;
@@ -86,7 +89,7 @@ int wifi_init() {
     }
     if(cfg.wifi_mode == WIFI_STA) {
         //Stations modus
-        if(cfg.wifi_ssid == NULL || sizeof(cfg.wifi_ssid) < 1) {
+        if(cfg.wifi_ssid == NULL || sizeof(cfg.wifi_ssid) < 1 || cfg.wifi_ssid == "") {
            status = startAP();      
                 
         } else {
@@ -102,6 +105,7 @@ int wifi_init() {
                     ESP_LOGI(TAG, "Mein Hostname: '%s'", WiFi.getHostname());
                     ESP_LOGI(TAG, "lokale IP: %s", WiFi.localIP().toString());
                     systemCfg.wifi_ready = true;
+                    lastStatus = WiFi.status();
                 } else {
                     ESP_LOGW(TAG, "Konnte keine Verbindung zu SSID '%s' aufbauen, starte AccessPoint.", cfg.wifi_ssid);
                     status = startAP();
@@ -126,7 +130,5 @@ void wifi_loop() {
     systemCfg.actual_wifi_status = WiFi.status();
     systemCfg.heap = ESP.getHeapSize();
     systemCfg.freeheap = ESP.getFreeHeap();
-
-    load_WiFiNetwork();
 }
 

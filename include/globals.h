@@ -89,7 +89,7 @@ typedef struct __attribute__((packed)) {
     uint8_t screenon;
     uint8_t countermode;
     int16_t rssilimit;
-    uint8_t sendcycle;
+    uint16_t sendcycle;
     uint16_t sleepcycle;
     uint16_t wakesync;
     uint8_t payloadmask;

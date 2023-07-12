@@ -57,13 +57,14 @@ const unsigned char lcdlogo [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#define DISPLAY_PAGES (7)
+#define DISPLAY_PAGES (4)
 #define PLOTBUFFERSIZE (MY_DISPLAY_WIDTH * MY_DISPLAY_HEIGHT / 8)
 
 #if( HAS_DISPLAY) == 1
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeMono12pt7b.h>
 
 #define MY_FONT_SMALL FONT_6x8
 #define MY_FONT_NORMAL FONT_8x8
@@ -99,7 +100,7 @@ const unsigned char lcdlogo [] PROGMEM = {
 #define MY_DISPLAY_WIDTH 128
 #endif
 #ifndef MY_DISPLAY_HEIGHT
-#define MY_DISPLAY_HEIGHT 64
+#define MY_DISPLAY_HEIGHT 32
 #endif
 #ifndef MY_DISPLAY_FIRSTLINE
 #define MY_DISPLAY_FIRSTLINE 0

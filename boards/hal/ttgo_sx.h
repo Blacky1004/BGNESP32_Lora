@@ -23,7 +23,7 @@
 #define MY_DISPLAY_SCL 13
 #define MY_DISPLAY_ADDR 0x3C
 #define MY_DISPLAY_WIDTH 128
-#define MY_DISPLAY_HEIGHT 64
+#define MY_DISPLAY_HEIGHT 32
 #define MY_DISPLAY_RST (16)
 #define MY_OLED_SDA (4)
 #define MY_OLED_SCL (15)
