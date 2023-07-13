@@ -354,20 +354,16 @@ static const cmd_t table[] = {
     {0x03, set_gps, 1},           {0x04, set_display, 1},
     {0x05, set_loradr, 1},        {0x06, set_lorapower, 1},
     {0x07, set_loraadr, 1},       {0x08, set_screensaver, 1},
-    {0x09, set_reset, 1},         {0x0a, set_sendcycle, 1},
-    {0x0b, set_wifichancycle, 1}, {0x0c, set_blescantime, 1},
-    {0x0d, set_wakesync, 2},      {0x0e, set_blescan, 1},
-    {0x0f, set_wifiant, 1},       {0x10, set_rgblum, 1},
-    {0x11, set_wifichanmap, 2},   {0x13, set_sensor, 2},
-    {0x14, set_payloadmask, 1},   {0x15, set_bme, 1},
-    {0x16, set_batt, 1},          {0x17, set_wifiscan, 1},
-    {0x18, set_flush, 0},         {0x19, set_sleepcycle, 2},
-    {0x20, set_loadconfig, 0},    {0x21, set_saveconfig, 0},
-    {0x80, get_config, 0},        {0x81, get_status, 0},
-    {0x83, get_batt, 0},          {0x84, get_gps, 0},
-    {0x85, get_bme, 0},           {0x86, get_time, 0},
-    {0x87, set_timesync, 0},      {0x88, set_time, 4},
-    {0x99, set_flush, 0}};
+    {0x09, set_reset, 1},         {0x0a, set_sendcycle, 1},    
+    {0x0d, set_wakesync, 2},      {0x0f, set_wifiant, 1},       
+    {0x13, set_sensor, 2},        {0x14, set_payloadmask, 1},   
+    {0x15, set_bme, 1},           {0x18, set_flush, 0},
+    {0x19, set_sleepcycle, 2},    {0x20, set_loadconfig, 0},    
+    {0x21, set_saveconfig, 0},    {0x80, get_config, 0},        
+    {0x81, get_status, 0},        {0x83, get_batt, 0},          
+    {0x84, get_gps, 0},           {0x85, get_bme, 0},
+    {0x86, get_time, 0},          {0x87, set_timesync, 0},      
+    {0x88, set_time, 4},          {0x99, set_flush, 0}};
 
 static const uint8_t cmdtablesize =
     sizeof(table) / sizeof(table[0]); // number of commands in command table
