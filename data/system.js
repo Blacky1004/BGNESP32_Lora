@@ -12,7 +12,7 @@ var sensorDatas = {
 };
 var pmChart;
 var tcChart;
-document.addEventListener("DOMContentLoaded", () => {
+$(document).ready(function() {
     //Beim start immer die DashbordDiv aktivieren, den rest disablen
     showConnections();
     if(!loraAvailable){
@@ -71,27 +71,28 @@ document.addEventListener("DOMContentLoaded", () => {
     tcChart = new Chart(cTcChart, tcConfig);            
         
     
+    getConfigDatas();
     setInterval(function() {
         lcnt = 0;
         getLoraInfo();
-        try {
-            var testImg = new Image();
-            testImg.src = "https://www.freifunk-gera-greiz.de/images/logo-buergernetzgeragreiz.png";
-            if(testImg.height > 0){
-                hasInternet = true;
-            }
-            else{
-                hasInternet = false;
-            }
-        } catch (error) {
-            hasInternet = false;
-        }
+        // try {
+        //     var testImg = new Image();
+        //     testImg.src = "https://www.freifunk-gera-greiz.de/images/logo-buergernetzgeragreiz.png";
+        //     if(testImg.height > 0){
+        //         hasInternet = true;
+        //     }
+        //     else{
+        //         hasInternet = false;
+        //     }
+        // } catch (error) {
+        //     hasInternet = false;
+        // }
     }, 10000);
     setInterval(() => {
         ajaxCharts();
     }, 60000);
     ajaxCharts();
-    getConfigDatas();
+
     setTimeout(function(){ 
         $('.preloader').addClass('preloader-deactivate');
     }, 3000);
@@ -213,23 +214,33 @@ function getConfigDatas(){
     });
 
     $.getJSON("/get_wifi_list", function(result) {
-        let wifiList = '<option value="-1">--- Nur als Accesspoint ---</option>';
-        if(result && result["wifis"] != undefined) {
-            //ist ein Eintrag ausgewählt? also irgendeiner ausser "-1";
-            var selBSSID = document.getElementById("ssid").value;
-            document.getElementById("ssid").innerHTML = "";            
-            $.each(result["wifis"], function(k, v) {
-                if(v["ssid"] != null) {
-                    var isselected = false;
-                    if(result["selected_bssid"] && result["selected_bssid"] == v["bssid"])
-                        isselected = true;
-                    wifiList += `<option value="${v["ssid"]}" ${isselected ? "selected" : ""}>${v["ssid"]}</option>`;    
-                }
-            });
-            document.getElementById("ssid").innerHTML = wifiList;
+        $("#ssid").empty();
+        $("#ssid").append($('<option></option>').val("-1").html("--- Nur als Accesspoint ---"));
+        
+        if(result["wifis"] != undefined && result["wifis"].length > 0) {                        
+            for(var i = 0; i < result["wifis"].length; i++) {
+                $("#ssid").append($('<option></option>').val(result["wifis"][i]["ssid"]).html(result["wifis"][i]["ssid"]));
+            }                 
         }
     });
 }
+function getWifiImage(rssi){
+    if(rssi >= 0)
+        return "wifi_err.png";
+    
+    let image = "wifi_err.png";
+    if(rssi <= -30 && rssi > -59)
+        image = "wifi_4.png";
+    else if(rssi <= -60 && rssi > -69)
+        image = "wifi_3.png";
+    else if(rssi <= -70 && rssi > -79)
+        image = "wifi_2.png";
+    else if(rssi <= -80 && rssi >- 89)
+        image = "wifi_1.png";
+    else if(rssi <= -90)
+        image = "wifi_0.png";
+}
+
 function ajaxCharts() {
     $.getJSON("/get_chartdatas", function(result) {
         sensorDatas = result;
@@ -248,6 +259,13 @@ function checkwifi(){
         ssid: ssid,
         pasw: pasw
     };
+    if(ssid == ""){
+        toastr.error("Das Feld SSID darf nicht leer sein!", "FEHLER", {timeOut: 5000});
+        return;
+    }
+
+
+
     $.ajax({
         url: "/save_wifi",
             type: 'post',
@@ -258,7 +276,7 @@ function checkwifi(){
                 if(response && response["code"]) {
                     switch(response["code"]) {
                         case 200:
-                            toastr.success("Die Speicherung deiner Standortdaten war erfolgreich.", "Erfolgreich", {timeOut: 2500})
+                            toastr.success("Die Speicherung Der WLAN-Verbindung war erfolgreich. Das System startet nun mit deinen Einstellungen neu.", "Erfolgreich", {timeOut: 2500})
                             setTimeout( function() {
                                 window.open("http:\\" + response["ip"]);
                             }, 3000);

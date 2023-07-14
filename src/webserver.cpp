@@ -2,6 +2,144 @@
 #include <ArduinoJson.h>
 
 AsyncWebServer server(80);
+
+#ifdef CAPTIVE_PORTAL
+class CaptiveRequesthandler : public AsyncWebHandler {
+    public:
+    CaptiveRequesthandler() {}
+
+    bool canHandle(AsyncWebServerRequest *request) {
+        if(request->host() != WiFi.softAPIP().toString())
+            return true;
+        else
+            return false;
+    }
+
+    void handleRequest(AsyncWebServerRequest * request) {
+        ESP_LOGD(TAG, "captive-request to %s", request->url().c_str());
+        String location = "http://" + WiFi.softAPIP().toString();
+        if(request->host() == String(systemCfg.hostname) + ".local")
+            location += request->url();
+        request->redirect(location);
+    }
+};
+#endif
+
+void handleNotFound(AsyncWebServerRequest *request){
+    ESP_LOGE(TAG, "NOT FOUND %s", request->url().c_str());
+    request->send(404, F(CONTENT_TYPE_PLAIN), F("Nicht gefunden!"));
+}
+
+void handleGetWifiList(AsyncWebServerRequest * request) {
+    String json = "{\"wifis\": [";
+
+    int n = WiFi.scanComplete();
+    ESP_LOGD(TAG, "scanning wifi (%d)", n);
+
+    if (n == WIFI_SCAN_FAILED){
+    WiFi.scanNetworks(true);
+    }
+    else if (n > 0) { // scan finished
+    for (int i = 0; i < n; ++i) {
+        if (i) json += ",";
+        json += "{";
+        json += "\"rssi\":" + String(WiFi.RSSI(i));
+        json += ",\"ssid\":\"" + WiFi.SSID(i) + "\"";
+        // json += ",\"bssid\":\""+WiFi.BSSIDstr(i)+"\"";
+        // json += ",\"channel\":"+String(WiFi.channel(i));
+        json += ",\"secure\":" + String(WiFi.encryptionType(i));
+        json += "}";
+    }
+    // save scan result memory
+    WiFi.scanDelete();
+    // WiFi.scanNetworks(true);
+    }
+    json += "]}";
+
+    AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
+    response->addHeader(F(CORS_HEADER), "*");
+    request->send(response);    
+}
+void handleLoraInfo(AsyncWebServerRequest * request) {
+    DynamicJsonDocument doc(1024);
+    doc["status"] = systemCfg.lora_status;
+    
+    #if (USE_OTAA)
+        JsonArray devkey = doc.createNestedArray("deveui");
+        JsonArray appkey = doc.createNestedArray("appeui");
+        JsonArray apskey = doc.createNestedArray("appkey");
+        doc["mode"] = "OTAA";
+        for(u1_t d: DEVEUI) {
+            devkey.add(d);
+        }
+        for(u1_t a: APPEUI) {
+            appkey.add(a);
+        }
+        for(u1_t k: APPKEY) {
+            apskey.add(k);
+        }
+        if(systemCfg.lora_status == LORA_JOINED) {
+            doc["netid"] = LMIC.netid & 0x001FFFFF;
+            doc["devaddr"] = String(LMIC.devaddr, HEX);
+        }
+    #else
+        doc["mode"] = "ABP";
+    #endif
+    doc["lcycle"] = cfg.sendcycle;
+    doc["devid"] = String(LMIC.devaddr, HEX);
+    doc["lwaitings"] = systemCfg.lora_waitings;
+    doc["lpayload"] = systemCfg.last_payload;
+    doc["rparams"] = systemCfg.radioParams; 
+
+    String json = "";
+    serializeJson(doc, json);
+    AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
+    response->addHeader(F(CORS_HEADER), "*");
+    request->send(response); 
+}
+void handleSensorList(AsyncWebServerRequest *request) {
+    DynamicJsonDocument doc(1024);
+    
+    JsonObject ocfg = doc.createNestedObject("cfg");
+    ocfg["lcycle"] = cfg.sendcycle;
+    ocfg["devid"] = String(LMIC.devaddr, HEX);
+    ocfg["rev"] = cfg.revision;
+    ocfg["flash"] = cfg.flashsize / 1024 / 1024;
+    ocfg["version"] =  String(cfg.version);
+    ocfg["speed"] = ESP.getCpuFreqMHz();
+    ocfg["heap"] = systemCfg.heap;
+    ocfg["freeheap"] = systemCfg.freeheap;
+    JsonObject wlan = doc.createNestedObject("wlan");
+    wlan["mode"] = systemCfg.wifi_mode == WIFI_STA ? "WLAN Station" : "AccessPoint";
+    wlan["ssid"] = systemCfg.wifi_ssid;
+    wlan["ip"] = systemCfg.myip;
+    JsonObject gps = doc.createNestedObject("gps");
+    gps["enabled"] = systemCfg.gps_enabled;
+    gps["valid"] = systemCfg.gps_latlng_valid;
+    if(systemCfg.gps_latlng_valid) {
+        gps["lat"] = systemCfg.lat;
+        gps["lng"] = systemCfg.lon;
+        gps["sat"] = systemCfg.sats;
+        gps["alt"] = systemCfg.altitude;
+    }
+    JsonObject sds = doc.createNestedObject("sds");
+    sds["valid"] = systemCfg.sds_valid;
+    if(systemCfg.sds_valid) {
+        sds["pm10"] = systemCfg.pm10;
+        sds["pm25"] = systemCfg.pm25;
+    }
+    JsonObject bme = doc.createNestedObject("bme");
+    bme["valid"] = systemCfg.bme_valid;
+    bme["temp"] = systemCfg.temp;
+    bme["hum"] = systemCfg.hum;
+    bme["press"] = systemCfg.press;
+    String json = "";
+    serializeJson(doc, json);
+
+    AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
+    response->addHeader(F(CORS_HEADER), "*");
+    request->send(response);    
+}
 String htmlProcessor(const String& var){
     if(var == "CHIPID") {
         ESP_LOGD(TAG, "VAR CHIPID = '%s'", systemCfg.hostname);
@@ -44,7 +182,10 @@ void webserver_init() {
 		ESP_LOGE(TAG,"SPIFFS Mountingfehler, Webserver wird nicht gestartet!");
         return;
 	}
-
+    server.onNotFound(handleNotFound);
+    #ifdef CAPTIVE_PORTAL
+        server.addHandler(new CaptiveRequesthandler()).setFilter(ON_AP_FILTER);
+    #endif
     server.serveStatic("/", SPIFFS,"/");
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         String indexFile = "/index_ap.html";
@@ -86,116 +227,36 @@ void webserver_init() {
 	server.on("/nav_bg.png", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(SPIFFS, "/nav_bg.png", "image/png");
 	});
+    server.on("/wifi_err.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+    server.on("/wifi_0.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+    server.on("/wifi_1.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+    server.on("/wifi_2.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+    server.on("/wifi_3.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+    server.on("/wifi_4.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
+    server.on("/wifi_ap.png", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(SPIFFS, "/nav_bg.png", "image/png");
+	});
     server.on("/configuration.png", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/configuration.png", "image/png");
     });
     #pragma endregion
 
     #pragma region Ajaxabfragen
-    server.on("/get_wifi_list", HTTP_GET, [](AsyncWebServerRequest *request) {
-        AsyncJsonResponse * response = new AsyncJsonResponse();
-        //DynamicJsonDocument doc(1024);
-        JsonObject root = response->getRoot();
-        // JsonArray wl = root.createNestedArray("wifis");
-        // std::map<byte, std::string> wlist;
-        // int n = WiFi.scanNetworks();
-        // if(n > 0){
-        //     for(byte i = 0; i < n; i++) {
-        //         JsonObject o = wl.createNestedObject();
-        //         o["id"] = i;
-        //         o["ssid"] = WiFi.SSID(i);
-        //         wl.add(o);
-        //     }
-        // }
-        root["wifis"] = wifiWebList;
-        root["mode"] = systemCfg.wifi_mode;
-        root["status"] = systemCfg.actual_wifi_status;
-        root["code"] = 200;
-        
-        //String json = "";
-        //serializeJson(doc, json);
-        //request->send(200, "application/json", json);
-        //json= String();
-        response->setLength();
-        request->send(response);
-    });
-    server.on("/get_lora_info", HTTP_GET, [](AsyncWebServerRequest *request) {
-        DynamicJsonDocument doc(1024);
-        doc["status"] = systemCfg.lora_status;
-        
-        #if (USE_OTAA)
-            JsonArray devkey = doc.createNestedArray("deveui");
-            JsonArray appkey = doc.createNestedArray("appeui");
-            JsonArray apskey = doc.createNestedArray("appkey");
-            doc["mode"] = "OTAA";
-            for(u1_t d: DEVEUI) {
-                devkey.add(d);
-            }
-            for(u1_t a: APPEUI) {
-                appkey.add(a);
-            }
-            for(u1_t k: APPKEY) {
-                apskey.add(k);
-            }
-            if(systemCfg.lora_status == LORA_JOINED) {
-                doc["netid"] = LMIC.netid & 0x001FFFFF;
-                doc["devaddr"] = String(LMIC.devaddr, HEX);
-            }
-        #else
-            doc["mode"] = "ABP";
-        #endif
-        doc["lcycle"] = cfg.sendcycle;
-        doc["devid"] = String(LMIC.devaddr, HEX);
-        doc["lwaitings"] = systemCfg.lora_waitings;
-        doc["lpayload"] = systemCfg.last_payload;
-        doc["rparams"] = systemCfg.radioParams; 
-
-        String json = "";
-        serializeJson(doc, json);
-        request->send(200, "application/json", json);
-        json= String();
-    });
-    server.on("/get_sensors", HTTP_GET, [](AsyncWebServerRequest *request) {
-        DynamicJsonDocument doc(1024);
-        
-        JsonObject ocfg = doc.createNestedObject("cfg");
-        ocfg["lcycle"] = cfg.sendcycle;
-        ocfg["devid"] = String(LMIC.devaddr, HEX);
-        ocfg["rev"] = cfg.revision;
-        ocfg["flash"] = cfg.flashsize / 1024 / 1024;
-        ocfg["version"] =  String(cfg.version);
-        ocfg["speed"] = ESP.getCpuFreqMHz();
-        ocfg["heap"] = systemCfg.heap;
-        ocfg["freeheap"] = systemCfg.freeheap;
-        JsonObject wlan = doc.createNestedObject("wlan");
-        wlan["mode"] = systemCfg.wifi_mode == WIFI_STA ? "WLAN Station" : "AccessPoint";
-        wlan["ssid"] = systemCfg.wifi_ssid;
-        wlan["ip"] = systemCfg.myip;
-        JsonObject gps = doc.createNestedObject("gps");
-        gps["enabled"] = systemCfg.gps_enabled;
-        gps["valid"] = systemCfg.gps_latlng_valid;
-        if(systemCfg.gps_latlng_valid) {
-            gps["lat"] = systemCfg.lat;
-            gps["lng"] = systemCfg.lon;
-            gps["sat"] = systemCfg.sats;
-            gps["alt"] = systemCfg.altitude;
-        }
-        JsonObject sds = doc.createNestedObject("sds");
-        sds["valid"] = systemCfg.sds_valid;
-        if(systemCfg.sds_valid) {
-            sds["pm10"] = systemCfg.pm10;
-            sds["pm25"] = systemCfg.pm25;
-        }
-        JsonObject bme = doc.createNestedObject("bme");
-        bme["valid"] = systemCfg.bme_valid;
-        bme["temp"] = systemCfg.temp;
-        bme["hum"] = systemCfg.hum;
-        bme["press"] = systemCfg.press;
-        String json = "";
-        serializeJson(doc, json);
-        request->send(200, "application/json", json);
-        json= String();
-    });
+    server.on("/get_wifi_list", HTTP_GET, handleGetWifiList);
+    server.on("/get_lora_info", HTTP_GET, handleLoraInfo);
+    server.on("/get_sensors", HTTP_GET, handleSensorList);
     server.on("/get_chartdatas", HTTP_GET, [](AsyncWebServerRequest * request) {
         DynamicJsonDocument doc(1024);
         JsonArray pm10 = doc.createNestedArray("pm10");
@@ -234,7 +295,7 @@ void webserver_init() {
             response = "{\"code\": 400, \"message\":\"Es wurde keine SSID übergeben.\"}";
             request->send(400, "application/json", response);
         } 
-        else if(data["ssid"].as<uint8_t>() == -1) {
+        else if(data["ssid"].as<String>() == "-1") {
             cfg.wifi_mode = WIFI_AP;
             cfg.wifi_bssid = 0;
             if(cfg.wifi_password != data["ssidpasw"].as<String>().c_str()) {

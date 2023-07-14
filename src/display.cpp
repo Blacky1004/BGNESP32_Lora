@@ -185,6 +185,16 @@ void dp_refresh(bool nextPage) {
                         gps.location.lng());
             display.display();
             break;
+        case 4:        
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.setTextWrap(false);
+            display.setTextSize(1);
+            display.printf("WiFi-Mode: %s\r\n", (WiFi.getMode() & WIFI_STA) ? "Station" : "AP");
+            display.printf("SSID: %s\r\n", (WiFi.getMode() & WIFI_STA) ? WiFi.SSID() : String(systemCfg.hostname));
+            display.printf("IP: %s\r\n", (WiFi.getMode() & WIFI_STA) ? WiFi.localIP().toString() : WiFi.softAPIP().toString());
+            display.display();
+            break;
         default:
             break;
     }

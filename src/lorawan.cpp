@@ -352,6 +352,8 @@ void myEventCallback(void *pUserData, ev_t ev) {
     if (msgWaiting) {
       systemCfg.lora_waitings = msgWaiting;
       snprintf(lmic_event_msg + 14, LMIC_EVENTMSG_LEN - 14, "%2u", msgWaiting);
+    } else {
+      systemCfg.lora_waitings = 0;
     }
         
 
