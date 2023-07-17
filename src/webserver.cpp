@@ -298,8 +298,8 @@ void webserver_init() {
         else if(data["ssid"].as<String>() == "-1") {
             cfg.wifi_mode = WIFI_AP;
             cfg.wifi_bssid = 0;
-            if(cfg.wifi_password != data["ssidpasw"].as<String>().c_str()) {
-                strcpy(cfg.wifi_password, data["ssidpasw"].as<String>().c_str());
+            if(cfg.wifi_password != data["pasw"].as<String>().c_str()) {
+                strcpy(cfg.wifi_password, data["pasw"].as<String>().c_str());
                 strcpy(cfg.wifi_ssid , systemCfg.hostname);
                 cfg.wifi_enabled = false;
                 
@@ -315,16 +315,12 @@ void webserver_init() {
         } else {
             cfg.wifi_mode = WIFI_STA;
             bool found = false;
-            
-            if(found){
-                saveConfig(false);
-                response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\"}";
-                request->send(200, "application/json", response);
-                do_reset(false);
-            } else {
-                response = "{\"code\": 404, \"message\":\"Es wurde Kein Netzwerk mit dieser SSID gefunden.\"}";
-                request->send(200, "application/json", response);
-            }
+            strcpy(cfg.wifi_ssid, data["ssid"].as<String>().c_str());
+            strcpy(cfg.wifi_password, data["pasw"].as<String>().c_str());
+            saveConfig(false);
+            response = "{\"code\": 200, \"message\":\"Es wurde Die WLAN Einstellung gespeichert..\"}";
+            request->send(200, "application/json", response);
+            do_reset(false);
         }
     });
     server.addHandler(check_wifi_handler);

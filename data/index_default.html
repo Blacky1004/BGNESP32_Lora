@@ -4,11 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="toastr.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
     <title>LoRa ESP32</title>
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <style>
+    <script src="jquery.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+
+    <script src="chart.js"></script>
+    <script src="toastr.min.js"></script>   <style>
         
     </style>
 </head>
@@ -47,7 +54,7 @@
     <div class="container px-4 px-lg-5">
         <div class="row gx-4 gx-lg-5 align-items-center my-5">
             <div class="col-lg-4">
-                <img class="img-fluid rounded mb-4 mb-lg-0" src="logo-buergernetzgeragreiz.png" alt="logo">
+                <img class="img-fluid rounded mb-4 mb-lg-0" src="logo-buergernetzgeragreiz.png" alt="logo" id="lgimg">
             </div>
             <div class="col-lg-8">
                 <h1 class="font-weight-light">Bürgernetz Gera-Greiz Feinstaubsensor</h1>
@@ -88,6 +95,106 @@
                     </div>
                 </div>
             </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h4 class="card-title">ESP32</h4>
+                        <table class="table mt-3 table-borderless v-middle">
+                            <tbody>
+                                <tr>
+                                    <td class="ps-0">Model:</td>
+                                    <td class="ps-0 text-end">%CHIPMODEL% Rev. %CHIPREV%</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Chip-Id:</td>
+                                    <td class="ps-0 text-end">%RAWCHIPID%</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">CPU:</td>
+                                    <td class="ps-0 text-end">%CORES% Kerne @ %MHZ%Mhz</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Flash:</td>
+                                    <td class="ps-0 text-end" id="fsize"></td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Heap</td>
+                                    <td class="ps-0 text-end" id="fheap"></td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">Version:</td>
+                                    <td class="ps-0 text-end" id="fversion"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h4 class="card-title">WLAN</h4>
+                        <table class="table mt-3 table-borderless v-middle">
+                            <tbody>
+                                <tr>
+                                    <td class="ps-0">Status:</td>
+                                    <td class="ps-0 text-end" id="wmode">AccessPoint</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">SSID:</td>
+                                    <td class="ps-0 text-end" id="wssid">%SSID%</td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-0">IP:</td>
+                                    <td class="ps-0 text-end" id="wip">%MYIP%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <h4 class="card-title mb-0">LoRaWAN</h4>
+                            <div class="ms-auto">
+                                <span class="fs-5 font-weight-medium text-primary" id="dlstatus"></span>
+                            </div>
+                        </div>
+                        <table class="table mt-3 table-borderless v-midle">
+                            <tr>
+                               <td class="ps-0">Device ID:</td> 
+                               <td class="ps-0 text-end" id="ldid"></td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Intervall:</td>
+                                <td class="ps-0 text-end" id="lcycle">%INTERVAL% Sek</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">letzter Payload:</td>
+                                <td class="ps-0 text-end" id="npl">0</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Warteschlange:</td>
+                                <td class="ps-0 text-end" id="lqueue">0</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Net-ID:</td>
+                                <td class="ps-0 text-end" id="netid">0</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0">Radio-Parameter:</td>
+                                <td class="ps-0 text-end" id="lradio">0</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12 mb-3">
+                <button class="btn btn-primary" onclick="setFactoryDefault()"  style="float: right;">Werkseinstellungen</button>
+                <button class="btn btn-primary" id="sysRestart" style="float: right; margin-right: 15px;">Neustart</button>
+            </div>
         </div>
         <div class="row gx-4 gx-lg-5" id="pConnections">
             <div class="col-md-6 mb-5">
@@ -99,14 +206,11 @@
                             Sie dieses System über Remote steuern, so geben Sie bitte hier die entsprechenden Daten für ihren Router ein.
                             Natürlich können Sie auch, wenn verfügbar, Freifunk als WLAN verwenden.
                         </p>
-                        <div class="mb-3">
-                            <input type="checkbox" class="form-check-input" id="enableWlan" name="enableWlan" checked/>
-                            <label for="enableWlan">WLAN aktivieren</label>
-                        </div>
+                        
                         <div class="mb-3">
                             <label>SSID</label>
                             <select class="form-control" id="ssid" name="ssid">
-                                %WIFILIST%
+                                
                             </select>
                         </div>
                         <div class="mb-4">
@@ -116,101 +220,164 @@
                     </div>
                     <div class="card-footer">
                         <div class="mt-4 mt-md-0 ms-auto">
-                            <button onclick="checkwifi()" class="btn btn-primary font-weight-medium rounded-pill px-4">Speichern</button>
+                            <button onclick="checkwifi()" class="btn btn-primary font-weight-medium rounded-pill px-4" id="savewlan" style="float: right;">Speichern</button>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-6 mb-5" >
                 <div class="card h-100" id="loraSetup">
-                    <form>
-                        <div class="card-body">
-                            <h3 class="card-title">LoRaWAN Einstellungen</h3>
-                            <p class="card-text" id="ltitle"></p>
-                            <div class="mb-3">
-                                <input type="checkbox" class="form-check-input" id="useLora" name="useLora" checked/>
-                                <label for="useLora">LoRaWAN verwenden</label>
-                            </div>
-                            <div class="mb-3">
-                                <label for="nwkskey">NwkSKey</label>
-                                <input type="text" class="form-control" id="nwkskey" name="nwkskey" placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
-                            </div>
-                            <div class="mb-3">
-                                <label for="appskey">AppSKey</label>
-                                <input type="text" class="form-control" id="appskey" name="appskey" placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
-                            </div>
-                            <div class="mb-3">
-                                <label for="devaddr">DevAddr</label>
-                                <input type="text" class="form-control" id="devaddr" name="devaddr" placeholder="00 00 00 00"/>
-                            </div>
-                            <div class="mb-3">
-                                <p>Sollte der Gateyway ein Single-Gateway sein, so ist hier nur der festeingestellte Kanal 1 zu verwenden.
-                                    Die übrigen Kanäle sind zu deaktivieren.
-                                </p>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <input type="checkbox" id="channel1" class="form-check-input" disabled checked/>
-                                        <label>Kanal 1</label>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 2</label>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 3</label>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 4</label>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 5</label>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 6</label>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 7</label>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="checkbox" class="form-check-input"  checked/>
-                                        <label>Kanal 8</label>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-lg-center">
+                            <h3 class="card-title mb-0">LoRaWAN Einstellungen</h3>
+                            <div class="ms-auto">
+                                <span class="text-danger fs-4 font-weight-medium" id="lorastatus">N/A</span>
+                            </div>    
                         </div>
-                        <div class="card-footer">
-                            <div class="mt-3 mt-md-0 ms-auto">
-                                <button class="btn btn-primary font-weight-medium rounded-pill px-4">Speichern</button>
-                            </div>
+                        <p class="card-text" id="ltitle"></p>
+                        <div id="loramode">
+                        <div class="mb-3">
+                            <input type="checkbox" class="form-check-input" id="useLora" name="useLora" checked/>
+                            <label for="useLora">LoRaWAN verwenden</label>
                         </div>
-                    </form>
+                        <div class="mb-3">
+                            <label for="devid">Device ID</label>
+                            <input id="devid" name="devid" class="form-control" placeholder="eui-0000000000000000" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="nwkskey">DEV-EUI<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nwkskey" name="nwkskey" required placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
+                            
+                        </div>
+                        <div class="mb-3">
+                            <label for="appskey">AppKey<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="appskey" name="appskey" required placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
+                        </div>  
+                        </div>                    
+                    </div>
+                    <div class="card-footer">
+                        <div class="mt-3 mt-md-0 ms-auto">
+                            <button class="btn btn-primary font-weight-medium rounded-pill px-4" id="loracheck" style="float: right;">Speichern</button>
+                        </div>
+                    </div>
                 </div>                
             </div>
+            <div class="col-lg-12" id="locations">
+                <div class="card h-100">
+                    <div class="border-bottom title-part-padding">
+                        <h4 class="card-title">Standort-daten</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 border-end">
+                                <h5>Adresse</h5>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label  class="form-label">Strasse</label>
+                                        <input type="text" class="form-control" placeholder="Musterstr. 123" name="street" id="street"/>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">PLZ</label>
+                                        <input type="number" class="form-control" placeholder="01234" name="plz" id="plz"/>
+                                    </div>
+                                    <div class="col-md-9 mb-3">
+                                        <label class="form-label">Ort</label>
+                                        <input type="text" class="form-control" placeholder="Gera" name="ort" id="ort"/>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <button class="btn btn-primary" style="float: right;" id="checkgps">Prüfen</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>GPS-Daten</h5>
+                                <div class="row">
+                                    <div class="mb-3">
+                                        <label class="form-label">Latitude</label>
+                                        <input type="number" placeholder="50.1234567" id="lat" name="lat" class="form-control">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Longitude</label>
+                                        <input type="number" placeholder="12.1234567" id="lng" name="lng" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="mt-3 mt-md-0 ms-auto">
+                            <button class="btn btn-primary font-weight-medium rounded-pill px-4" id="savelocation" style="float: right;">Speichern</button>
+                        </div>
+                    </div>
+                </div>
+            </div> 
         </div>
         <div class="row gx-4 gx-lg-5" id="pSensors">
 
+        </div>
+        <div class="row gx-4 gx-lg-5" id="pSystem">
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Systemdateien</h4>
+                        <ul class="panel" id="files">
+                            
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Datei</h5>
+                        <textarea class="form-control" ></textarea>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <footer class="py-5 footer-light">
 
     </footer>
-    <script>        
-    document.addEventListener("DOMContentLoaded", () => {
-
-        loadMapData();
-        setTimeout(function(){ 
-            $('.preloader').addClass('preloader-deactivate');
-        }, 3000);
-    });
-        function loadMapData() {
-            var map = L.map('map').setView([50.844276, 12.0694576],17);
+    <div class="modal fade" id="restartmodal" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header d-flex align-items-center">
+                    <h4 class="modal-title">Systemneustart</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Damit deine Änderung am System wirksam werden, muss dein System neu gestartet werden.
+                        Bitte warte bis der Vorgang abgeschlossen ist. Die Seite sollte sich dann automatisch wieder öffnen.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>      <div class="modal fade" id="m_factoryDefault"  aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header d-flex align-items-center">
+                    <h4 class="modal-title">Werkseinstellungen</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Mit dem zurücksetzen des System auf Werkseinstellung, werden alle Einstellungen im System gelöscht.
+                        Dies sollte in der Regel nur dann durchgeführt werden, wenn das System wegen Fehleinstellungen nicht mehr funtioniert.
+                    </p>
+                    <p>Sollen die Einstellungen wirklich gelöscht werden und das System auf Werkseinstellung zurück gesetzt werden?</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="btnSetDF">Abbrechen</button>
+                    <button class="btn btn-danger" id="btncloseDF">zurücksetzen</button>
+                </div>
+            </div>
+        </div>
+    </div>    <script>        
+    var flashSize =  0 //%FLASHZIZE%;
+    var freeHeap = 0 //%FREEHEAP%;
+    var heap = 0 //%HEAP%;
+    var loraAvailable = true//%LORAAVAILABLE%;
+    var expertMode =  false//%EXPERTMODE%;
+    $(document).ready(function() {
+        var map = L.map('map').setView([50.844276, 12.0694576],17);
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -220,8 +387,9 @@
                 fillColor: '#f03',
                 fillOpacity: 0.5
             }).addTo(map);
-        }
+    });
     </script>
+    <script src="system.js"></script>
     <div class="modal" id="systemRestart">
         <div class="modal-content">
             
