@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico" />
     <title>LoRa ESP32</title>
     <script src="jquery.js"></script>
+    <script src="popper.min.js"></script>
     <script src="bootstrap.bundle.min.js"></script>
 
     <script src="chart.js"></script>
@@ -304,29 +305,150 @@
         <div class="row gx-4 gx-lg-5" id="pSensors">
 
         </div>
-        <div class="row gx-4 gx-lg-5" id="pSystem">
-            <div class="col-lg-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="card-title">Systemdateien</h4>
-                        <ul class="panel" id="files">
-                            
-                        </ul>
+        <div class="row gx-4 gx-lg-5 mb-5" id="pSystem">
+            <form id="system_frm">
+                <div class="row">
+                <div class="col-lg-6 d-flex align-items-stretch">
+                    <div class="card w-100">
+                        <div class="card-body">
+                            <h4 class="card-title">Systemeinstellungen</h4>
+                            <div class="alert alert-danger" role="alert">
+                                <div class="d-flex align-items-center text-danger">
+                                    Achtung!!! Diese Einstellungen sollten NUR von erfahrenen Anwendern durchgeführt werden!
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body border-top">
+                            <div class="row">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="sleepcycle" class="control-labal col-form-label">SleepCycle</label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" max="65535" id="sleepcycle" name="sleepcycle" class="form-control"/>
+                                            <span class="input-group-text">Sekunden</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="wakesync" class="control-labal col-form-label">WakeSync 
+                                            <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" max="300" id="wakesync" name="wakesync" class="form-control"/>                                        
+                                            <span class="input-group-text">Sekunden</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="homecycle" class="control-labal col-form-label">HomeCycle
+                                            <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU Die Messungen durchführt.">?</a> </label>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" max="65535" id="homecycle" name="homecycle" class="form-control"/>
+                                            <span class="input-group-text">Sekunden</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="wakesync" class="control-labal col-form-label">WakeSync 
+                                            <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" max="300" id="wakesync" name="wakesync" class="form-control"/>                                        
+                                            <span class="input-group-text">Sekunden</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="sendcycle" class="control-labal col-form-label">SendCycle
+                                            <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU Die Messungen durchführt.">?</a> </label>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" max="65535" id="sendcycle" name="sendcycle" class="form-control"/>
+                                            <span class="input-group-text">Sekunden</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="wakesync" class="control-labal col-form-label">SendType 
+                                            <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                        <select id="sendtype" name="sendtype" class="form-control">
+                                            <option value="0">Nur über LoRaWAN</option>
+                                            <option value="1">Vorzugsweise über LoRaWAN</option>
+                                            <option value="2">Nur über WLAN</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body border-top">
+                            <h4 class="card-title">LoRaWAN</h4>
+                            <div class="row">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="adr" class="control-labal col-form-label">ADR</label>
+                                        <input type="number" min="0" max="15" id="adr" name="adr" class="form-control"/>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="mb-3">
+                                        <label for="txpower" class="control-labal col-form-label">TX-Power 
+                                            <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                            <input type="number" min="0" max="300" id="txpower" name="txpower" class="form-control"/>
+                                    </div>
+                                </div>                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 d-flex align-items-stretch">
+                    <div class="card w-100">
+                        <div class="card-body">
+                            <h4 class="card-title">Firmware</h4>
+                            <div class="col-sm"
+                        </div>
+                        <div class="card-body border-top">
+                            <h5 class="card-title">Konfiguration</h3>
+                            <div class="row">
+                                <div class="col-sm-12 col-md-9">
+                                    <div class="mb-3">
+                                        <label class="control-labal col-form-label">Sicherung der aktuellen Konfiguration</label>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-3">
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-primary">Backup</button>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-12 col-md-9">
+                                    <input type="file" class="form-control" id="newconfig" name="newconfig"/>
+                                </div>
+                                <div class="col-sm-12 col-md-3">
+                                    <button class="btn btn-primary" type="button">Upload</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body border-top">
+
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-8 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Datei</h5>
-                        <textarea class="form-control" ></textarea>
-                    </div>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
-    <footer class="py-5 footer-light">
-
+    <footer class="py-5 footer-light text-center">
+        Version: <span id="footer_vers">0.36.264</span> - (<span id="footer_date">15.07.2023 14:00:00</span>)
     </footer>
     <div class="modal fade" id="restartmodal" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
         <div class="modal-dialog">
