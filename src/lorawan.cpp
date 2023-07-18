@@ -182,7 +182,7 @@ void lora_send(void *pvParameters) {
                 }
             #endif
             ESP_LOGI(TAG, "%d Bytes an LoRa gesendet.", SendBuffer.MessageSize);
-            systemCfg.last_payload = compileTime();
+            systemCfg.last_payload = systemCfg.actual_time;
             xQueueReceive(LoraSendQueue, &SendBuffer, (TickType_t)0);
             break;
         case LMIC_ERROR_TX_BUSY:

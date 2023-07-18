@@ -97,6 +97,41 @@ void handleLoraInfo(AsyncWebServerRequest * request) {
     response->addHeader(F(CORS_HEADER), "*");
     request->send(response); 
 }
+void handleBackupConfig(AsyncWebServerRequest *request) {
+    DynamicJsonDocument doc(1024);
+    doc["adrmode"] = cfg.adrmode;
+    doc["appeui"] = cfg.appeui;
+    doc["appkey"] = cfg.appkey;
+    doc["devaddr"] = cfg.devaddr;
+    doc["deveui"] = cfg.deveui;
+    doc["lora_is_abp"] = cfg.lora_is_abp;
+    doc["loradr"] = cfg.loradr;
+    doc["nwkskey"] = cfg.nwkskey;
+    doc["payloadmask"] = cfg.payloadmask;
+    doc["rssilimit"] = cfg.rssilimit;
+    doc["screenon"] = cfg.screenon;
+    doc["screensaver"] = cfg.screensaver;
+    doc["sendcycle"] = cfg.sendcycle;
+    doc["sendtype"] = cfg.sendtype;
+    doc["sleepcycle"] = cfg.sleepcycle;
+    doc["txpower"] = cfg.txpower;
+    doc["version"] = cfg.version;
+    doc["wakesync"] = cfg.wakesync;
+    doc["wifi_enabled"] = cfg.wifi_enabled;
+    doc["wifi_mode"] = cfg.wifi_mode;
+    doc["wifi_password"] = cfg.wifi_password;
+    doc["wifi_ssid"] = cfg.wifi_ssid;
+    String json = "";
+    serializeJson(doc, json);
+    File backup = SPIFFS.open("/backup.json", FILE_WRITE);
+    if(!backup)
+        request->send(500, "text/plain", "Fehler beim erstellen des Backups!");
+    else{
+        backup.print(json);
+        backup.close();
+        request->send(SPIFFS, "/backup.json", "application/json", true);
+    }
+}
 void handleSensorList(AsyncWebServerRequest *request) {
     DynamicJsonDocument doc(1024);
     
@@ -109,6 +144,7 @@ void handleSensorList(AsyncWebServerRequest *request) {
     ocfg["speed"] = ESP.getCpuFreqMHz();
     ocfg["heap"] = systemCfg.heap;
     ocfg["freeheap"] = systemCfg.freeheap;
+    ocfg["fdate"] = compileTime();
     JsonObject wlan = doc.createNestedObject("wlan");
     wlan["mode"] = systemCfg.wifi_mode == WIFI_STA ? "WLAN Station" : "AccessPoint";
     wlan["ssid"] = systemCfg.wifi_ssid;
@@ -170,10 +206,10 @@ String htmlProcessor(const String& var){
 }
 
 void webserver_init() {
-    while (systemCfg.wifi_ready == false)
-    {
-        delay(20);
-    }
+    // while (systemCfg.wifi_ready == false)
+    // {
+    //     delay(20);
+    // }
     
     systemCfg.myip = systemCfg.wifi_mode == WIFI_AP ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
     ESP_LOGI(TAG,"Starte Webserver auf http://%s ...", systemCfg.myip);
@@ -192,8 +228,8 @@ void webserver_init() {
         if(cfg.wifi_mode == WIFI_STA && WiFi.status() == WL_CONNECTED){
             indexFile = "/index_default.html";
         }
-
-        request->send(SPIFFS, indexFile, String(), false, htmlProcessor);
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, indexFile, String(), false, htmlProcessor);
+        request->send(response);
     });
 
     #pragma region Contenthandling
@@ -280,6 +316,8 @@ void webserver_init() {
         request->send(200, "application/json", json);
         json= String();
     });
+    server.on("/backup_config", HTTP_GET, handleBackupConfig);
+
     AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
         StaticJsonDocument<200> data;
         if (json.is<JsonArray>())
@@ -306,7 +344,7 @@ void webserver_init() {
                 response = "{\"code\": 200, \"message\":\"Es wurde keine SSID übergeben.\", \"ip\": \"192.168.4.1\"}";
                 request->send(200, "application/json", response);
                 saveConfig(false);
-                delay(5000);
+                //delay(5000);
                 do_reset(false);
             } else {
                 response = "{\"code\": 303, \"message\": \"Es wurden keine Änderungen erkannt.\"}";

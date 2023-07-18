@@ -81,7 +81,7 @@ void dp_init(bool verbose) {
         // give user some time to read or take picture
         //dp_dump();
     #if !(BOOTMENU)
-    display.drawBitmap(20,0, lcdlogo, 91,64, WHITE);
+    display.drawBitmap(20,0, lcdlogo, 91,32, WHITE);
     display.display();
         delay(8000);
     #endif
@@ -194,6 +194,7 @@ void dp_refresh(bool nextPage) {
             display.printf("SSID: %s\r\n", (WiFi.getMode() & WIFI_STA) ? WiFi.SSID() : String(systemCfg.hostname));
             display.printf("IP: %s\r\n", (WiFi.getMode() & WIFI_STA) ? WiFi.localIP().toString() : WiFi.softAPIP().toString());
             display.display();
+            
             break;
         default:
             break;

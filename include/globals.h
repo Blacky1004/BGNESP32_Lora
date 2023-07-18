@@ -158,6 +158,7 @@ typedef struct {
   uint8_t lora_waitings;
   char radioParams[40];
   time_t last_payload;
+  time_t actual_time;
 } systemvars_t;
 
 #endif

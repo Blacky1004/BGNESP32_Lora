@@ -157,7 +157,7 @@ void enter_deepsleep(uint32_t wakeup_sec, gpio_num_t wakeup_gpio) {
   mask_user_IRQ();
 
   // shutdown i2c bus
-  //i2c_deinit();
+  i2c_deinit();
 
 #if (HAS_TIME)
   if (cfg.wakesync && cfg.sleepcycle)

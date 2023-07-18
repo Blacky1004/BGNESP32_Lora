@@ -3,5 +3,6 @@
     "cmake.sourceDirectory": "C:/Users/jenss/source/repos/BGNESP32_Lora/.pio/libdeps/ttgo-lora32-v1/Adafruit GFX Library",
     "files.associations": {
         "*.conf": "cpp"
-    }
+    },
+    "C_Cpp.dimInactiveRegions": false
 }

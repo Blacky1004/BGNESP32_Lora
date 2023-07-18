@@ -233,7 +233,7 @@ void clock_loop(void *taskparameter) { // ClockTask
     tt = (time_t)(current_time + 1);
     localtime_r(&tt, &t);
     tt = mktime(&t);
-
+    systemCfg.actual_time = tt;
 #if defined HAS_IF482
 
     // wait until moment to fire. Normally we won't get notified during this
