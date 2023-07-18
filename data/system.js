@@ -12,6 +12,9 @@ var sensorDatas = {
 };
 var pmChart;
 var tcChart;
+var ajaxBusy = false;
+const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
 $(document).ready(function() {
     //Beim start immer die DashbordDiv aktivieren, den rest disablen
     showConnections();
@@ -73,20 +76,7 @@ $(document).ready(function() {
     
     getConfigDatas();
     setInterval(function() {
-        lcnt = 0;
-        getLoraInfo();
-        // try {
-        //     var testImg = new Image();
-        //     testImg.src = "https://www.freifunk-gera-greiz.de/images/logo-buergernetzgeragreiz.png";
-        //     if(testImg.height > 0){
-        //         hasInternet = true;
-        //     }
-        //     else{
-        //         hasInternet = false;
-        //     }
-        // } catch (error) {
-        //     hasInternet = false;
-        // }
+        getLoraInfo();        
     }, 10000);
     setInterval(() => {
         ajaxCharts();
@@ -188,11 +178,19 @@ document.getElementById("checkgps").addEventListener("click", function(e) {
     getGpsLocation();
 });
 
+document.getElementById("bckConfig").addEventListener('click', function(e) {
+    if(ajaxBusy) return;
+    $.getJSON("/backup_config", function(result, status) {
 
+    });
+});
 function getConfigDatas(){
     
     getLoraInfo();
+
+    if(ajaxBusy) return;
     $.getJSON("/get_sensors", function(result) {
+        ajaxBusy = true;
         if(result["gps"])
         {
             if(result["gps"]["enabled"] && result["gps"]["valid"]){
@@ -203,6 +201,9 @@ function getConfigDatas(){
         if(result["cfg"]) {
             document.getElementById("fsize").innerHTML = result["cfg"]["flash"] + "MB";
             document.getElementById("fversion").innerHTML =  result["cfg"]["version"];
+            document.getElementById("footer_vers").innerHTML = result["cfg"]["version"];
+            var fdtate = new Date(result["cfg"]["fdate"] * 1000);
+            document.getElementById("footer_date").innerHTML = `${fdtate.toLocaleDateString("de-DE")} ${fdtate.toLocaleTimeString("de-DE")}`;
             document.getElementById("fheap").innerHTML =  formatSizeUnits(result["cfg"]["freeheap"]) + " frei von " + formatSizeUnits(result["cfg"]["heap"]);
             
         }
@@ -211,10 +212,12 @@ function getConfigDatas(){
             document.getElementById("wssid").innerHTML = result["wlan"]["ssid"];
             document.getElementById("wip").innerHTML = result["wlan"]["ip"];
         }
+        ajaxBusy = false;
     });
-
+    if(ajaxBusy) return;
     $.getJSON("/get_wifi_list", function(result) {
         $("#ssid").empty();
+        ajaxBusy = true;
         $("#ssid").append($('<option></option>').val("-1").html("--- Nur als Accesspoint ---"));
         
         if(result["wifis"] != undefined && result["wifis"].length > 0) {                        
@@ -222,8 +225,10 @@ function getConfigDatas(){
                 $("#ssid").append($('<option></option>').val(result["wifis"][i]["ssid"]).html(result["wifis"][i]["ssid"]));
             }                 
         }
+        ajaxBusy = false;
     });
 }
+
 function getWifiImage(rssi){
     if(rssi >= 0)
         return "wifi_err.png";
@@ -242,7 +247,9 @@ function getWifiImage(rssi){
 }
 
 function ajaxCharts() {
+    if(ajaxBusy) return;
     $.getJSON("/get_chartdatas", function(result) {
+        ajaxBusy = true;
         sensorDatas = result;
         pmChart.data.datasets[0].data = sensorDatas["pm25"];
         pmChart.data.datasets[1].data = sensorDatas["pm10"];
@@ -250,8 +257,10 @@ function ajaxCharts() {
         tcChart.data.datasets[1].data = sensorDatas["hum"];
         pmChart.update();
         tcChart.update();
+        ajaxBusy = false;
     });
 }
+
 function checkwifi(){
     let ssid = document.getElementById("ssid").value;
     let pasw = document.getElementById("ssidpasw").value;
@@ -297,6 +306,7 @@ function checkwifi(){
             }
     });
 }
+
 function showConnections(){
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
@@ -315,6 +325,7 @@ function showConnections(){
     document.getElementById("ort").disabled = !hasInternet;
     document.getElementById("checkgps").disabled = !hasInternet;
 }
+
 function showSensors() {
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
@@ -328,6 +339,7 @@ function showSensors() {
     document.getElementById("pSensors").style.display = "flex"           
     document.getElementById("pSystem").style.display = "none"
 }
+
 function showDasboard(){
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
@@ -344,6 +356,7 @@ function showDasboard(){
     document.getElementById("pSystem").style.display = "none"
     getLoraInfo();
 }
+
 function showSystem() {
     document.getElementById("lnkHome").classList.remove("active");
     document.getElementById("lnkConnections").classList.remove("active");
@@ -358,6 +371,7 @@ function showSystem() {
     document.getElementById("pSensors").style.display = "none"
     getAllCfgFiles();
 }
+
 function hex2num(hexcode){ return Number(  '0x' + hexcode.split(/[^0-9a-fA-F]+/).join('')  ) }
 
 function formatSizeUnits(bytes){
@@ -383,8 +397,20 @@ function checkConnectionAvailable(){
     }
 }
 
+function getSystemConfig() {
+    if(ajaxBusy) return;
+    $.getJSON("/syscfg", function(response) {
+        if(response["code"] == 200) {
+            $("#sleepcycle").val(response["sleepcycle"]);
+            $("#wakesync").val(response["wakesync"]);
+        }
+    });
+}
+
 function getLoraInfo() {
+    if(ajaxBusy) return;
     $.getJSON("/get_lora_info", function(response) {
+        ajaxBusy = true;
         let loraOn = false;
         document.getElementById("loramode").innerHTML = "";
         document.getElementById("lorastatus").classList.remove("text-danger", "text-primary", "text-success");
@@ -472,21 +498,15 @@ function getLoraInfo() {
             }
             document.getElementById("lcycle").innerHTML = response["lcycle"] + " Sek"
             document.getElementById("lqueue").innerHTML = response["lwaitings"];
-            if(response["lpayload"] && response["lpayload"] != 0) {
-               
+            if(response["lpayload"] && response["lpayload"] != 0) {               
                 var pdate = new Date(response["lpayload"]* 1000);
-                var day = pdate.getDay() < 10 ? "0"+pdate.getDay() : pdate.getDay();
-                var mon = pdate.getMonth() < 10 ? "0"+pdate.getMonth() : pdate.getMonth();
-                var hour = pdate.getHours() < 10 ? "0" + pdate.getHours() : pdate.getHours();
-                var minute = pdate.getMinutes() < 10 ? "0" + pdate.getMinutes() : pdate.getMinutes();
-                var seks = pdate.getSeconds() < 10 ? "0" + pdate.getSeconds() : pdate.getSeconds();
-                //document.getElementById("npl").innerHTML = `${day}.${mon}.${pdate.getFullYear()} ${hour}:${minute}:${seks}`;
                 document.getElementById("npl").innerHTML = `${pdate.toLocaleDateString("de-DE")} ${pdate.toLocaleTimeString("de-DE")}`;
             } else {
                 document.getElementById("npl").innerHTML = "-";
             }
             document.getElementById("lradio").innerHTML = response["rparams"];
-        }                
+        }    
+        ajaxBusy = false;            
     });
 }
 
@@ -517,6 +537,7 @@ document.getElementById("savelocation").addEventListener("click", function(e) {
             latitude: lat,
             longitude: lon
         };
+        ajaxBusy = true;
         $.ajax({
             url: "/save_location",
             type: 'post',
@@ -525,13 +546,16 @@ document.getElementById("savelocation").addEventListener("click", function(e) {
             data: JSON.stringify(json),
             success: function(response) {
                 toastr.success("Die Speicherung deiner Standortdaten war erfolgreich.", "Erfolgreich", {timeOut: 5000})
+                ajaxBusy = false;
             },
             error: function(error) {
                 toastr.error(error["message"], "Fehler!",   {timeOut: 5000});
+                ajaxBusy = false;
             }
         });
     }
 });
+
 function setFactoryDefault() {
     //Sicherheitsabfrage ob das wirklich gemacht werden soll
     $("#m_factoryDefault").modal("show");
