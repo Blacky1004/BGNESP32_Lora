@@ -14,6 +14,7 @@
 #define WIFI_IRQ _bitl(10)
 
 #include "globals.h"
+#include "button.h"
 #include "cyclic.h"
 #include "senddata.h"
 #include "timekeeper.h"

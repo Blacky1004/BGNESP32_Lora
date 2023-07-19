@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <lmic.h>
 #include <WiFi.h>
+#include "Version.h"
 
 #ifdef HAS_RTC
 #include <RtcUtility.h>

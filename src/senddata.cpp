@@ -57,17 +57,7 @@ while (bitmask) {
       #ifdef HAS_DISPLAY
             //dp_plotCurve(count.pax, true);
       #endif
-
-      #if (HAS_SDCARD)
-            sdcardWriteData(count.wifi_count, count.ble_count
-      #if (defined BAT_MEASURE_ADC || defined HAS_PMU)
-                            ,
-                            read_voltage()
-      #endif
-            );
-      #endif // HAS_SDCARD
-      //ESP_LOGI(TAG, "Sende Payload");
-      //SendPayload(COUNTERPORT);
+      
       break; // case COUNTDATA
 
       #if (HAS_BME)

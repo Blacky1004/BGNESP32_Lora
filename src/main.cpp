@@ -16,7 +16,7 @@ void setup() {
     #endif
 
     do_after_reset();
-    ESP_LOGI(TAG, "Starte System v%s (Runmode=%d / Neustarts=%d)", PROGVERSION, RTC_runmode, RTC_restarts);
+    ESP_LOGI(TAG, "Starte System v%s (Runmode=%d / Neustarts=%d)", VERSION, RTC_runmode, RTC_restarts);
     ESP_LOGI(TAG, "Firmwaredatum: %d", compileTime());
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
@@ -142,6 +142,15 @@ void setup() {
   timerAttachInterrupt(displayIRQ, &DisplayIRQ, false);
   timerAlarmWrite(displayIRQ, DISPLAYREFRESH_MS * 1000, true);
   timerAlarmEnable(displayIRQ);
+#endif
+#ifdef HAS_BUTTON
+  strcat_P(features, " BTN_");
+#ifdef BUTTON_PULLUP
+  strcat_P(features, "PU");
+#else
+  strcat_P(features, "PD");
+#endif // BUTTON_PULLUP
+  button_init();
 #endif
 #if ((HAS_LORA_TIME) || (HAS_GPS) || defined HAS_RTC)
   time_init();

@@ -18,5 +18,6 @@
 #include "timekeeper.h"
 #include "boot.h"
 #include "webserver.h"
+#include "button.h"
 
 #endif

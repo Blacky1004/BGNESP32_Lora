@@ -47,7 +47,7 @@ void dp_init(bool verbose) {
         display.setTextSize(1);
         display.setTextWrap(false);
         display.setCursor(0,0);
-        display.printf("Software v%s\r\n", PROGVERSION);
+        display.printf("Software v%s\r\n", VERSION);
         display.printf("ESP32 %d cores\r\n", chip_info.cores);
         display.printf("Chip Rev.%d\r\n", chip_info.revision);
         display.printf("%dMB %s Flash", spi_flash_get_chip_size() / (1024 * 1024),

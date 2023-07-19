@@ -15,6 +15,7 @@ var tcChart;
 var ajaxBusy = false;
 const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
 const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
+
 $(document).ready(function() {
     //Beim start immer die DashbordDiv aktivieren, den rest disablen
     showConnections();
@@ -46,7 +47,7 @@ $(document).ready(function() {
                     data: sensorDatas["pm10"],
                 }
             ]
-        };
+    };
     const tcData = {
         labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
         datasets:[
@@ -72,7 +73,6 @@ $(document).ready(function() {
     pmChart = new Chart(cPMChart, pmConfig);
     const cTcChart = document.getElementById("tempdaten");
     tcChart = new Chart(cTcChart, tcConfig);            
-        
     
     getConfigDatas();
     setInterval(function() {
@@ -529,10 +529,11 @@ document.getElementById("sysRestart").addEventListener("click", function(e) {
 
     this.style.disabled = true;
 });
+
 document.getElementById("savelocation").addEventListener("click", function(e) {
     let lat = document.getElementById("lat").value;
     let lon = document.getElementById("lng").value;
-    if((lat != "" || lat > 0) && (lon != "" && lon) > 0){
+    if((lat != "" || lat > 0) && (lon != "" || lon > 0)){
         let json = {
             latitude: lat,
             longitude: lon
@@ -589,6 +590,5 @@ function getGpsLocation(){
                 document.getElementById("lng").value = result[0]["lon"];
             }
         });
-
     }
 }

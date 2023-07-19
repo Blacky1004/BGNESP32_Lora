@@ -16,7 +16,7 @@ float pm25Datas[]= {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float tempDatas[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float humdatas[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 static void defaultConfig(systemConfig_t *myConfig) {
-	strncpy(myConfig->version, PROGVERSION, sizeof(myConfig->version) - 1);
+	strncpy(myConfig->version, VERSION, sizeof(myConfig->version) - 1);
 	
 	auto appeui = std::initializer_list<u1_t>({0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
 	std::copy(appeui.begin(), appeui.end(), myConfig->appeui);
@@ -107,10 +107,10 @@ void loadConfig(void) {
 	ESP_LOGI(TAG, "Konfiguration v%s geladen", cfg.version);
 
 	//prüfen ob die eingelesene Version mit der aktuellen Firmware übereinstimmt
-	switch (version_compare(PROGVERSION, cfg.version))
+	switch (version_compare(VERSION, cfg.version))
 	{
 	case  -1:
-		ESP_LOGE(TAG, "Die Konfiguration v%s ist mit der aktuellen Firmware v%s nicht kompatibel!", cfg.version, PROGVERSION);
+		ESP_LOGE(TAG, "Die Konfiguration v%s ist mit der aktuellen Firmware v%s nicht kompatibel!", cfg.version, VERSION);
 		eraseConfig();
 		break;
 	case 1:

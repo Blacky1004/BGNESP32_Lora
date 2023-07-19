@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define HAS_LED LED_BUILTIN
-
+#define HAS_BUTTON KEY_BUILTIN
 #define HAS_LORA 1
 //#define CFG_sx1272_radio 1
 
