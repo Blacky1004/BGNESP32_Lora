@@ -39,11 +39,12 @@ void dp_setup(int contrast) {
 void dp_init(bool verbose) {
     dp_setup(DISPLAYCONTRAST);
     ESP_LOGD(TAG, "Init Display");
+    display.setTextColor(WHITE);
     if(verbose) {
         #if (VERBOSE)
         esp_chip_info_t chip_info;
         esp_chip_info(&chip_info);
-        display.setTextColor(WHITE);
+
         display.setTextSize(1);
         display.setTextWrap(false);
         display.setCursor(0,0);
@@ -89,6 +90,7 @@ void dp_init(bool verbose) {
     #endif // HAS_LORA}
     }
     //dp_power(cfg.screenon);
+
 }
 
 void dp_refresh(bool nextPage) {

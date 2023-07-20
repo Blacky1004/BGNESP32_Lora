@@ -100,10 +100,19 @@ void handleLoraInfo(AsyncWebServerRequest * request) {
 void handleBackupConfig(AsyncWebServerRequest *request) {
     DynamicJsonDocument doc(1024);
     doc["adrmode"] = cfg.adrmode;
+    JsonArray appeui = doc.createNestedArray("appeui");
+    for(auto x: cfg.appeui) {
+        appeui.add(x);
+    }
     doc["appeui"] = cfg.appeui;
-    doc["appkey"] = cfg.appkey;
-    doc["devaddr"] = cfg.devaddr;
-    doc["deveui"] = cfg.deveui;
+    JsonArray appkey = doc.createNestedArray("appkey");
+    for(auto a: cfg.appkey) {
+        appkey.add(a);
+    }
+    JsonArray deveui = doc.createNestedArray("deveui");
+    for(auto d: cfg.deveui) {
+        deveui.add(d);
+    }
     doc["lora_is_abp"] = cfg.lora_is_abp;
     doc["loradr"] = cfg.loradr;
     doc["nwkskey"] = cfg.nwkskey;
@@ -131,6 +140,9 @@ void handleBackupConfig(AsyncWebServerRequest *request) {
         backup.close();
         request->send(SPIFFS, "/backup.json", "application/json", true);
     }
+}
+void handleConfigUpload(AsyncWebServerRequest * request) {
+    
 }
 void handleSensorList(AsyncWebServerRequest *request) {
     DynamicJsonDocument doc(1024);

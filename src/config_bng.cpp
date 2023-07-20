@@ -47,6 +47,7 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->wifi_mode = WIFI_STA;
 	myConfig->wifi_enabled = true;
 	myConfig->cpuspeed = ESP.getCpuFreqMHz();
+	myConfig->wakeup_manual = false;
 	strcpy(myConfig->wifi_ssid, "");
 	strcpy(myConfig->wifi_password, "");	
 }

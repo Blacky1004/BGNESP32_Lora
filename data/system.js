@@ -180,9 +180,7 @@ document.getElementById("checkgps").addEventListener("click", function(e) {
 
 document.getElementById("bckConfig").addEventListener('click', function(e) {
     if(ajaxBusy) return;
-    $.getJSON("/backup_config", function(result, status) {
-
-    });
+    window.location = "/backup_config";
 });
 function getConfigDatas(){
     
@@ -556,7 +554,13 @@ document.getElementById("savelocation").addEventListener("click", function(e) {
         });
     }
 });
-
+document.getElementById("btncfgUpdate").addEventListener("click", function(e) {
+    var fileInput = $("#newconfig")[0].files[0];
+    if(fileInput) {
+        var upload = new Upload(fileInput, "/updcfg");
+        upload.doUpload();
+    }
+});
 function setFactoryDefault() {
     //Sicherheitsabfrage ob das wirklich gemacht werden soll
     $("#m_factoryDefault").modal("show");

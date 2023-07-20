@@ -1,6 +1,6 @@
 #if(HAS_LORA)
 #include "lorawan.h"
-
+#include "config_bng.h"
 #if CLOCK_ERROR_PROCENTAGE > 7
 #warning CLOCK_ERROR_PROCENTAGE value in lmic_config.h is too high; values > 7 will cause side effects
 #endif
@@ -90,6 +90,8 @@ void gen_lora_deveui(uint8_t *pdeveui) {
   for (i = 0; i < 6; i++) {
     *p++ = dmac[5 - i];
   }
+  memcpy(cfg.deveui, &p, 8);
+  saveConfig(false);
 }
 // Function to do a byte swap in a byte array
 void RevBytes(unsigned char *b, size_t c) {
@@ -122,8 +124,10 @@ void os_getDevEui(u1_t *buf) {
   }
   if (k) {
     RevBytes(buf, 8); // use fixed DEVEUI and swap bytes to LSB format
+    memcpy(cfg.deveui, DEVEUI, 8);
   } else {
     gen_lora_deveui(buf); // generate DEVEUI from device's MAC
+    saveConfig(false);
   }
 #endif
 }
@@ -231,8 +235,12 @@ esp_err_t lmic_init(void) {
     #ifdef USE_OTAA
         if(RTC_runmode == RUNMODE_WAKEUP)
             LoadLMICFromRTC();
-        if(!LMIC_startJoining())
-            ESP_LOGI(TAG, "Bereits verbunden.");;
+        if(!LMIC_startJoining()) {
+          ESP_LOGI(TAG, "Bereits verbunden.");
+          systemCfg.lora_status = LORA_JOINED;
+          irqcycler.attach(cfg.sendcycle, setSendIRQ); 
+        }
+            
     #else
         //TODO hier mal noch die ABP Sachen mit rein....
     #endif

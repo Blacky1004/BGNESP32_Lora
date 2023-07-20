@@ -99,6 +99,8 @@ typedef struct __attribute__((packed)) {
     uint8_t cores;
     uint32_t flashsize;
     uint32_t cpuspeed;
+    bool wakeup_manual;
+    
 } systemConfig_t;
 
 typedef struct {
