@@ -45,7 +45,7 @@ while (bitmask) {
     ESP_LOGD(TAG,"Verarbeite MASKE: %d", mask);
     switch (bitmask & mask) {
 
-    case COUNT_DATA:
+    case SDS11_DATA:
       payload.reset();     
 
       #if (HAS_SDS011)
@@ -58,7 +58,7 @@ while (bitmask) {
             //dp_plotCurve(count.pax, true);
       #endif
       
-      break; // case COUNTDATA
+    break; // case SDS11_DATA
 
       #if (HAS_BME)
           case MEMS_DATA:
@@ -70,7 +70,7 @@ while (bitmask) {
 
       #if (HAS_GPS)
           case GPS_DATA:
-            if (GPSPORT != COUNTERPORT) {
+            if (GPSPORT != SDS11PORT) {
               // send GPS position only if we have a fix
               if (gps_hasfix()) {
                 gps_storelocation(&gps_status);

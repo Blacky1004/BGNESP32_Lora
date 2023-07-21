@@ -39,7 +39,7 @@
 #define _bitl(b) (1UL << (b))
 
 // bits in payloadmask for filtering payload data
-#define COUNT_DATA _bit(0)
+#define SDS11_DATA _bit(0)
 #define RESERVED_DATA _bit(1)
 #define MEMS_DATA _bit(2)
 #define GPS_DATA _bit(3)
@@ -92,8 +92,10 @@ typedef struct __attribute__((packed)) {
     int16_t rssilimit;
     uint16_t sendcycle;
     uint16_t sleepcycle;
+    uint16_t homecycle;
     uint16_t wakesync;
     uint8_t payloadmask;
+    uint8_t payloadqueue;
     char model[50];
     uint8_t revision;
     uint8_t cores;
@@ -162,6 +164,8 @@ typedef struct {
   char radioParams[40];
   time_t last_payload;
   time_t actual_time;
+  bool inet_available;
+  bool expertmode;
 } systemvars_t;
 
 #endif

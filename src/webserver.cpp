@@ -97,6 +97,127 @@ void handleLoraInfo(AsyncWebServerRequest * request) {
     response->addHeader(F(CORS_HEADER), "*");
     request->send(response); 
 }
+void handleExpertMode(AsyncWebServerRequest *request) {
+    systemCfg.expertmode = true;
+    request->send(200, "application/json", "{\"code\": 200}");
+}
+void handleSaveConfig(AsyncWebServerRequest *request) {
+    int params = request->params();
+    bool needRestart = false;
+    bool hasChanged = false;
+    for(int i= 0; i <params; i++) {
+        AsyncWebParameter *p = request->getParam(i);
+        Serial.printf("Param '%s' mit Value '%s'", p->name().c_str(), p->value().c_str());
+        if(p->isPost()) {
+            if(p->name() == "sleepcycle") {
+                uint16_t sc = strtoul( p->value().c_str(), NULL, 0);
+                if( sc != cfg.sleepcycle) {
+                    cfg.sleepcycle = (sc * 60) / 10;
+                    needRestart = true;
+                    ESP_LOGD(TAG, "Setze SleepCycle auf %d", cfg.sleepcycle);
+                    hasChanged = true;
+                }
+            }
+            else if(p->name() == "wakesync") {
+                uint16_t ws = strtoul(p->value().c_str(), NULL, 0);
+                if(ws != cfg.wakesync) {
+                    cfg.wakesync = ws;
+                    needRestart = true;
+                    ESP_LOGD(TAG, "Setze WakeSync auf %d", cfg.wakesync);
+                    hasChanged = true;
+                }
+            }
+            else if(p->name() == "homecycle") {
+                uint16_t hc = strtoul( p->value().c_str(), NULL, 0);
+                if(hc != cfg.homecycle) {
+                    cfg.homecycle = hc;
+                    needRestart = true;
+                    ESP_LOGD(TAG, "Setze HomeCycle auf %d", cfg.homecycle);
+                    hasChanged = true;
+                }
+            }
+            else if(p->name() == "payloadqueue") {
+                uint8_t pq = atoi(p->value().c_str());
+                if(pq != cfg.payloadqueue) {
+                    cfg.payloadqueue = pq;
+                    needRestart = true;
+                    ESP_LOGD(TAG, "Setze PayloadQueue auf %d", cfg.payloadqueue);
+                    hasChanged = true;
+                }
+            }
+            else if(p->name() == "sendcycle") {
+                uint16_t snc = strtoul(p->value().c_str(), NULL, 0);
+                if(snc != cfg.sendcycle) {
+                    cfg.sendcycle = snc * 60;
+                    needRestart = true;
+                    ESP_LOGD(TAG, "Setze SendCycle auf %d", cfg.sendcycle);
+                    hasChanged = true;
+                }
+            }
+            else if(p->name() == "sendtype") {
+                if(p->value().c_str() == "0") {
+                    cfg.sendtype = LORA_ONLY;
+                    hasChanged = true;
+                } 
+                else if (p->value().c_str() == "1") {
+                    cfg.sendtype = LORA_PREFERABLY;
+                    hasChanged = true;
+                } 
+                else if(p->value().c_str() == "2") {
+                    cfg.sendtype = WLAN_ONLY;
+                    hasChanged = true;
+                }
+            }
+            else if(p->name() == "adr") {
+                    uint8_t ld = atoi(p->value().c_str());
+                    if(ld != cfg.loradr) {
+                    cfg.loradr = ld;
+                    LMIC_setDrTxpow(assertDR(cfg.loradr), KEEP_TXPOW);
+                    hasChanged = true;
+                    }
+            }
+            else if(p->name() == "txpower"){
+                uint8_t tp = atoi(p->value().c_str());
+                if(tp != cfg.txpower) {
+                    cfg.txpower = tp;
+                    LMIC_setDrTxpow(assertDR(cfg.loradr), cfg.txpower);
+                    hasChanged = true;
+                }
+            }            
+        }
+    }
+
+    DynamicJsonDocument doc(512);
+    String json = "";
+    if(hasChanged == true) {
+        saveConfig(false);
+        
+        if(needRestart == true){
+            doc["status"] = 201;
+            
+        } else {
+            doc["status"] = 200;
+        }
+    } else 
+        doc["status"] = 202;
+    serializeJson(doc, json);
+    AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
+    response->addHeader(F(CORS_HEADER), "*");
+    request->send(response); 
+
+    
+
+    if(needRestart == true) 
+        do_reset(false);
+}
+void handleResetConfig(AsyncWebServerRequest *request) {
+    eraseConfig();
+    String json = "{\"code\": 200}";
+    AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
+    response->addHeader(F(CORS_HEADER), "*");
+    request->send(response);   
+    do_reset(false);
+}
 void handleBackupConfig(AsyncWebServerRequest *request) {
     DynamicJsonDocument doc(1024);
     doc["adrmode"] = cfg.adrmode;
@@ -131,7 +252,7 @@ void handleBackupConfig(AsyncWebServerRequest *request) {
     doc["wifi_password"] = cfg.wifi_password;
     doc["wifi_ssid"] = cfg.wifi_ssid;
     String json = "";
-    serializeJson(doc, json);
+    serializeJsonPretty(doc, json);
     File backup = SPIFFS.open("/backup.json", FILE_WRITE);
     if(!backup)
         request->send(500, "text/plain", "Fehler beim erstellen des Backups!");
@@ -142,7 +263,23 @@ void handleBackupConfig(AsyncWebServerRequest *request) {
     }
 }
 void handleConfigUpload(AsyncWebServerRequest * request) {
-    
+
+}
+void handleGetSystemConfig(AsyncWebServerRequest *request) {
+    DynamicJsonDocument doc(1024);
+    doc["sleepcycle"] = cfg.sleepcycle;
+    doc["wakesync"] = cfg.wakesync;
+    doc["homecycle"] = cfg.homecycle;
+    doc["payloadqueue"] = cfg.payloadqueue;
+    doc["sendcycle"] = cfg.sendcycle;
+    doc["sendtype"] = cfg.sendtype;
+    doc["adr"] = cfg.loradr;
+    doc["txpower"] = cfg.txpower;
+    String json = "";
+    serializeJson(doc, json);
+    AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
+    response->addHeader(F(CORS_HEADER), "*");
+    request->send(response);
 }
 void handleSensorList(AsyncWebServerRequest *request) {
     DynamicJsonDocument doc(1024);
@@ -213,6 +350,9 @@ String htmlProcessor(const String& var){
     }
     if(var == "INTERVAL") {
         return String(cfg.sendcycle);
+    }
+    if(var == "FIRMWAREDATE") {
+        return String(BUILD_TIMESTAMP);
     }
     return String();
 }
@@ -329,7 +469,10 @@ void webserver_init() {
         json= String();
     });
     server.on("/backup_config", HTTP_GET, handleBackupConfig);
-
+    server.on("/syscfg", HTTP_GET, handleGetSystemConfig);
+    server.on("/set_expert", HTTP_GET, handleExpertMode);
+    server.on("/savecfg", HTTP_POST, handleSaveConfig);
+    server.on("/resetsyscfg", HTTP_GET, handleResetConfig);
     AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
         StaticJsonDocument<200> data;
         if (json.is<JsonArray>())

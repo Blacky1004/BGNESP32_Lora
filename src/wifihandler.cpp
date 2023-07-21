@@ -130,5 +130,10 @@ void wifi_loop() {
     systemCfg.actual_wifi_status = WiFi.status();
     systemCfg.heap = ESP.getHeapSize();
     systemCfg.freeheap = ESP.getFreeHeap();
+    if(Ping.ping("www.google.com")) {
+        systemCfg.inet_available = true;
+    } else {
+        systemCfg.inet_available = false;
+    }
 }
 

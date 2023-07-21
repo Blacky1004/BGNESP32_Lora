@@ -115,7 +115,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="nwkskey">DEV-EUI<span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nwkskey" name="nwkskey" required placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
+                            <input type="text" class="form-control" id="nwkskey" name="nwkskey" required readonly placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
                             
                         </div>
                         <div class="mb-3">
@@ -308,7 +308,7 @@
         <div class="row gx-4 gx-lg-5 mb-5" id="pSystem">            
             <div class="row">                
                 <div class="col-lg-6 d-flex align-items-stretch">
-                    <form id="system_frm">
+                    <form id="system_frm" action="/savecfg" method="post">
                         <div class="card w-100">
                             <div class="card-body">
                                 <h4 class="card-title">Systemeinstellungen</h4>
@@ -322,17 +322,19 @@
                                 <div class="row">
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
-                                            <label for="sleepcycle" class="control-labal col-form-label">SleepCycle</label>
+                                            <label for="sleepcycle" class="control-labal col-form-label">SleepCycle
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="SleepCycle" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Minuten, wenn die MPU wieder aufgeweckt werden soll. Default = 0 (OFF) bis Max 120 Minuten.">?</a>
+                                            </label>
                                             <div class="input-group">
-                                                <input type="number" min="0" max="65535" id="sleepcycle" name="sleepcycle" class="form-control"/>
-                                                <span class="input-group-text">Sekunden</span>
+                                                <input type="number" min="0" max="120" id="sleepcycle" name="sleepcycle" class="form-control"/>
+                                                <span class="input-group-text">Minuten</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
                                             <label for="wakesync" class="control-labal col-form-label">WakeSync 
-                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Angabe der WakeUp Verzögerung (+/-). Werte mit (-) zieht den Aufweckvorgang um diesen Wert nach vorn bzw. (+) verzögert den WakeUp. Angaben von 0 bis 300 (Default)" >?</a> </label>
                                             <div class="input-group">
                                                 <input type="number" min="0" max="300" id="wakesync" name="wakesync" class="form-control"/>                                        
                                                 <span class="input-group-text">Sekunden</span>
@@ -344,7 +346,7 @@
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
                                             <label for="homecycle" class="control-labal col-form-label">HomeCycle
-                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU Die Messungen durchführt.">?</a> </label>
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="HomeCycle" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU die vorhandenen Sensoren abfragen soll. Default = 30">?</a> </label>
                                             </label>
                                             <div class="input-group">
                                                 <input type="number" min="0" max="65535" id="homecycle" name="homecycle" class="form-control"/>
@@ -354,8 +356,8 @@
                                     </div>
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
-                                            <label for="payloadqueue" class="control-labal col-form-label">Max Warteschlange 
-                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                            <label for="payloadqueue" class="control-labal col-form-label">PayloadQueue 
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="PayloadQueue" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Anzahl wieviel maximale Payloaddaten in der Warteschlange stehen dürfen. Default = 10 bei 1 Keine Warteschlange.">?</a> </label>
                                                 <input type="number" min="0" max="300" id="payloadqueue" name="payloadqueue" class="form-control"/>                                        
                                         </div>
                                     </div>
@@ -364,18 +366,18 @@
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
                                             <label for="sendcycle" class="control-labal col-form-label">SendCycle
-                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU Die Messungen durchführt.">?</a> </label>
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="SendCycle" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Minuten wann die MPU die Payload(s) an TTN schickt. Diese Einstellung ist nur Relevant, wenn kein SleepCycle eingestellt wurde.">?</a> </label>
                                             </label>
                                             <div class="input-group">
                                                 <input type="number" min="0" max="65535" id="sendcycle" name="sendcycle" class="form-control"/>
-                                                <span class="input-group-text">Sekunden</span>
+                                                <span class="input-group-text">Minuten</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
                                             <label for="wakesync" class="control-labal col-form-label">SendType 
-                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="SendType" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Auswahl wohin die Daten gesendet werden sollen.">?</a> </label>
                                             <select id="sendtype" name="sendtype" class="form-control">
                                                 <option value="0">Nur über LoRaWAN</option>
                                                 <option value="1">Vorzugsweise über LoRaWAN</option>
@@ -390,18 +392,27 @@
                                 <div class="row">
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
-                                            <label for="adr" class="control-labal col-form-label">ADR</label>
+                                            <label for="adr" class="control-labal col-form-label">Datarate
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="Datarate" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Angabe mit welcher Datenrate die Payloads gesendet werden sollen. Default = 5">?</a> 
+                                            </label>
                                             <input type="number" min="0" max="15" id="adr" name="adr" class="form-control"/>
                                         </div>
                                     </div>
                                     <div class="col-sm-12 col-md-6">
                                         <div class="mb-3">
                                             <label for="txpower" class="control-labal col-form-label">TX-Power 
-                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Zeit in Sekunden wann die MPU wieder aufwacht bevor ein neuer Event ausgelöst wird.">?</a> </label>
-                                                <input type="number" min="0" max="300" id="txpower" name="txpower" class="form-control"/>
+                                                <a class="align-items-center text-info font-weight-medium" role="button" style="text-decoration: none;" data-container="body" title="WakeSync" data-bs-toggle="popover" data-bs-placement="top" data-bs-content="Angabe der TX-Power in dBm. Diese ist Modulabhängig und sollte eigentlich nicht geändert werden. Default = 14.">?</a> </label>
+                                                <div class="input-group">
+                                                    <input type="number" min="0" max="300" id="txpower" name="txpower" class="form-control"/>
+                                                    <span class="input-group-text">dBm</span>
+                                                </div>
                                         </div>
                                     </div>                                
                                 </div>
+                            </div>
+                            <div class="card-footer text-end">
+                                <button type="button" id="resetCfg" class="btn btn-warning">Zurücksetzen</button>
+                                <button type="submit" id="sndcfgfrm" class="btn btn-primary">Speichern</button>
                             </div>
                         </div>
                     </form>
@@ -415,7 +426,7 @@
                                     <label class="control-label col-form-label">Version:</label>
                                 </div>
                                 <div class="col-sm-12 col-md-6">
-                                    <span id="sysversion">0.36.624</span>
+                                    <span id="sysversion">-</span>
                                 </div>    
                             </div>
                             <div class="row">
@@ -423,7 +434,7 @@
                                     <label class="control-label col-form-label">Firmwaredatum:</label>
                                 </div>
                                 <div class="col-sm-12 col-md-6">
-                                    <span id="sysfdate">15.07.2023 14:00:00</span>
+                                    <span id="sysfdate">-</span>
                                 </div> 
                             </div>
                         </div>
@@ -474,7 +485,7 @@
     <div class="modal fade" id="restartmodal" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header d-flex align-items-center">
+                <div class="modal-header d-flex m-auto">
                     <h4 class="modal-title">Systemneustart</h4>
                 </div>
                 <div class="modal-body">
@@ -509,7 +520,9 @@
         var freeHeap = 0 //%FREEHEAP%;
         var heap = 0 //%HEAP%;
         var loraAvailable = true//%LORAAVAILABLE%;
-        var expertMode =  false//%EXPERTMODE%;
+        var expertMode =  false;//%EXPERTMODE%;
+        var fwRawDate = "%FIRMWAREDATE%"; //"2023-07-21T10:30:42"; 
+        var devmode = false;
     </script>
     <script src="system.js"></script>
 </body>

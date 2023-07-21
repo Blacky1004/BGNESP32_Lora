@@ -48,6 +48,8 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->wifi_enabled = true;
 	myConfig->cpuspeed = ESP.getCpuFreqMHz();
 	myConfig->wakeup_manual = false;
+	myConfig->homecycle = HOMECYCLE;
+	myConfig->payloadqueue = SEND_QUEUE_SIZE;
 	strcpy(myConfig->wifi_ssid, "");
 	strcpy(myConfig->wifi_password, "");	
 }

@@ -12,6 +12,7 @@ var sensorDatas = {
 };
 var pmChart;
 var tcChart;
+var fwDate;
 var ajaxBusy = false;
 const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
 const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
@@ -73,7 +74,7 @@ $(document).ready(function() {
     pmChart = new Chart(cPMChart, pmConfig);
     const cTcChart = document.getElementById("tempdaten");
     tcChart = new Chart(cTcChart, tcConfig);            
-    
+    fwdate = new Date(fwRawDate);
     getConfigDatas();
     setInterval(function() {
         getLoraInfo();        
@@ -171,7 +172,15 @@ document.getElementById("lgimg").addEventListener('click', function(e) {
     if(lcnt == 5){
         expertMode = true;
         let expertMenu = '<li class="nav-item"><a class="nav-link" href="javascript:void(0)" id="lnkSystem" onclick="showSystem()">System</a></li>';
-        document.getElementById("nmenu").insertAdjacentHTML('beforeend', expertMenu);
+        if(!devmode) {
+            $.getJSON("/set_expert", function(result) {
+                if(result["code"] == 200) {
+                    document.getElementById("nmenu").insertAdjacentHTML('beforeend', expertMenu);
+                }
+            });    
+        } else {
+            document.getElementById("nmenu").insertAdjacentHTML('beforeend', expertMenu);
+        }
     }
 });
 document.getElementById("checkgps").addEventListener("click", function(e) {
@@ -182,6 +191,44 @@ document.getElementById("bckConfig").addEventListener('click', function(e) {
     if(ajaxBusy) return;
     window.location = "/backup_config";
 });
+document.getElementById("resetCfg").addEventListener('click', function(e) {
+    $.getJSON("/resetsyscfg", function(result) {
+        if(result["code"] == 200) {
+            toastr.success('Die Konfiguration wurde auf Werkseinstellung zurückgesetzt. Das System wird neu gestartet', "Konfiguration zurückgesetzt", {timeOut: 5000});
+        }
+    });
+});
+$("#system_frm").submit(function(e) {
+    e.preventDefault();
+    var actionUrl = e.currentTarget.action;
+    $.ajax({
+        url: actionUrl,
+        type: 'post',
+        data: $("#system_frm").serialize(),
+        beforeSend: function() {
+            $("#resetCfg").prop("disabled", true);
+            $("#sndcfgfrm").prop("disabled", true);
+        },
+        complete: function() {
+            $("#resetCfg").prop("disabled", false);
+            $("#sndcfgfrm").prop("disabled", false);
+        },
+        success: function(result) {
+            if(result["status"] == 201){
+                toastr.warning('Die Änderungen wurden erfolgreich gespeichert. Das System wird neu gestartet', "Änderungen gespeichert", {timeOut: 5000});
+            }
+            else if(result["status"] == 202) {
+                toastr.warning('Es wurden keine Änderungen vorgenommen.', "Keine Änderungen", {timeOut: 5000})
+            
+            } else 
+                toastr.success('Die Änderungen wurden erfolgreich gespeichert.', "Änderungen gespeichert", {timeOut: 5000});
+        },
+        error: function(msg) {
+                toastr.error('Die Änderungen konnten NICHT gespeichert werden! Grund: '+msg, "Änderungen fehlgeschlagen", {timeOut: 5000});
+        }
+    });
+});
+
 function getConfigDatas(){
     
     getLoraInfo();
@@ -198,10 +245,10 @@ function getConfigDatas(){
         }
         if(result["cfg"]) {
             document.getElementById("fsize").innerHTML = result["cfg"]["flash"] + "MB";
-            document.getElementById("fversion").innerHTML =  result["cfg"]["version"];
+            document.getElementById("fversion").innerHTML = document.getElementById("sysversion").innerHTML =  result["cfg"]["version"];
             document.getElementById("footer_vers").innerHTML = result["cfg"]["version"];
-            var fdtate = new Date(result["cfg"]["fdate"] * 1000);
-            document.getElementById("footer_date").innerHTML = `${fdtate.toLocaleDateString("de-DE")} ${fdtate.toLocaleTimeString("de-DE")}`;
+            //var fdtate = new Date(result["cfg"]["fdate"] * 1000);
+            document.getElementById("footer_date").innerHTML = document.getElementById("sysfdate").innerHTML = `${fwdate.toLocaleDateString("de-DE")} ${fwdate.toLocaleTimeString("de-DE")}`;
             document.getElementById("fheap").innerHTML =  formatSizeUnits(result["cfg"]["freeheap"]) + " frei von " + formatSizeUnits(result["cfg"]["heap"]);
             
         }
@@ -367,7 +414,7 @@ function showSystem() {
     document.getElementById("pDashboerd").style.display = "none"
     document.getElementById("pConnections").style.display = "none"
     document.getElementById("pSensors").style.display = "none"
-    getAllCfgFiles();
+    getSystemConfig();
 }
 
 function hex2num(hexcode){ return Number(  '0x' + hexcode.split(/[^0-9a-fA-F]+/).join('')  ) }
@@ -398,10 +445,14 @@ function checkConnectionAvailable(){
 function getSystemConfig() {
     if(ajaxBusy) return;
     $.getJSON("/syscfg", function(response) {
-        if(response["code"] == 200) {
-            $("#sleepcycle").val(response["sleepcycle"]);
-            $("#wakesync").val(response["wakesync"]);
-        }
+        $("#sleepcycle").val((response["sleepcycle"] * 10 )/ 60);
+        $("#wakesync").val(response["wakesync"]);
+        $("#homecycle").val(response["homecycle"]);
+        $("#payloadqueue").val(response["payloadqueue"]);
+        $("#sendcycle").val(response["sendcycle"] / 60);
+        $("#adr").val(response["adr"]);
+        $("#txpower").val(response["txpower"]);
+        $("#sendtype option[value='"+response["sendtype"]+"']").prop('selected', true);
     });
 }
 
@@ -465,7 +516,7 @@ function getLoraInfo() {
                         deveui += response["deveui"][i].toString(16);
                     }
                 }
-                otamode += `<div class="mb-3"><label for="deveui">DeviceEUI</label><input id="deveui" name="deveui" class="form-control" value="${deveui.toUpperCase()}" placeholder="eui-0000000000000000" /></div>`;
+                otamode += `<div class="mb-3"><label for="deveui">DeviceEUI</label><input id="deveui" name="deveui" class="form-control" readonly value="${deveui.toUpperCase()}" placeholder="eui-0000000000000000" /></div>`;
                 
                 let appeui = "";
                 if(response["appeui"] && response["appeui"].length > 0){
@@ -554,6 +605,7 @@ document.getElementById("savelocation").addEventListener("click", function(e) {
         });
     }
 });
+
 document.getElementById("btncfgUpdate").addEventListener("click", function(e) {
     var fileInput = $("#newconfig")[0].files[0];
     if(fileInput) {
@@ -561,6 +613,7 @@ document.getElementById("btncfgUpdate").addEventListener("click", function(e) {
         upload.doUpload();
     }
 });
+
 function setFactoryDefault() {
     //Sicherheitsabfrage ob das wirklich gemacht werden soll
     $("#m_factoryDefault").modal("show");

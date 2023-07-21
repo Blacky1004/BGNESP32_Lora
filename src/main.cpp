@@ -164,7 +164,7 @@ void setup() {
 //Webserver starten
 webserver_init();
  // cyclic function interrupts
-  cyclicTimer.attach(HOMECYCLE, setCyclicIRQ);
+  cyclicTimer.attach(cfg.homecycle, setCyclicIRQ);
     // show compiled features
     ESP_LOGI(TAG, "Features:%s", features);
     RTC_runmode = RUNMODE_NORMAL;

@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include <WiFi.h>
+#include <ESP32Ping.h>
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
 #include "config_bng.h"

@@ -181,7 +181,7 @@ void enter_deepsleep(uint32_t wakeup_sec, gpio_num_t wakeup_gpio) {
   // time stamp sleep start time and save system monotonic time. Deep sleep.
   gettimeofday(&sleep_start_time, NULL);
   RTC_millis += esp_timer_get_time() / 1000LL;
-  ESP_LOGI(TAG, "Going to sleep, good bye.");
+  ESP_LOGI(TAG, "Going to sleep for %d seconds, good bye.", wakeup_sec);
 
 // flush & close sd card, if we have
 #if (HAS_SDCARD)

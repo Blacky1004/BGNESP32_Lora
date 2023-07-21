@@ -1,5 +1,5 @@
 /* This routine is called by interrupt in regular intervals */
-/* Interval can be set in paxcounter.conf (HOMECYCLE)       */
+/* Interval can be set in bnetzconfig.conf (HOMECYCLE)       */
 
 // Basic config
 #include "cyclic.h"

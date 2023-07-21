@@ -210,15 +210,15 @@ void lora_send(void *pvParameters) {
 }
 
 esp_err_t lmic_init(void) {    
-    _ASSERT(SEND_QUEUE_SIZE > 0);
+    _ASSERT(cfg.payloadqueue > 0);
     systemCfg.lora_status = LORA_INIT;
-    LoraSendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(MessageBuffer_t));
+    LoraSendQueue = xQueueCreate(cfg.payloadqueue, sizeof(MessageBuffer_t));
     if(LoraSendQueue == 0) {
         ESP_LOGE(TAG, "Die LoRa Sendewarteschlange konnte nicht erstellt werden. Abbruch!");
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "LoRa Sendewarteschlange erstellt, Größe %d Bytes", SEND_QUEUE_SIZE * sizeof(MessageBuffer_t));
+    ESP_LOGI(TAG, "LoRa Sendewarteschlange erstellt, Größe %d Bytes", cfg.payloadqueue * sizeof(MessageBuffer_t));
 
     //Setup LMIC Stack
     os_init_ex(&myPinmap);
