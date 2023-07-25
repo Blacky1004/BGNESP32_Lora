@@ -1,5 +1,6 @@
 #include "webserver.h"
 #include <ArduinoJson.h>
+#include <Update.h>
 
 AsyncWebServer server(80);
 
@@ -279,11 +280,13 @@ void handleConfigUpload(AsyncWebServerRequest *request, String filename, size_t 
     if(final) {
         ESP_LOGD(TAG, "Upload komplett: '%s' Größe: %d", filename, String(index + len));
         request->_tempFile.close();
-        
+        DynamicJsonDocument doc(1024);
+        deserializeJson(doc, data);
+        cfg.adrmode = doc["adrmode"].as<uint8_t>();
     }
 }
 void handleGetSystemConfig(AsyncWebServerRequest *request) {
-    DynamicJsonDocument doc(1024);
+    DynamicJsonDocument doc(8000);
     doc["sleepcycle"] = cfg.sleepcycle;
     doc["wakesync"] = cfg.wakesync;
     doc["homecycle"] = cfg.homecycle;
@@ -292,6 +295,20 @@ void handleGetSystemConfig(AsyncWebServerRequest *request) {
     doc["sendtype"] = cfg.sendtype;
     doc["adr"] = cfg.loradr;
     doc["txpower"] = cfg.txpower;
+    JsonArray rurls = doc.createNestedArray("rest_urls");
+    int i= 0;
+    for(const resturls_t& item: cfg.rest_urls) {
+        JsonObject ud = rurls.createNestedObject();
+        ud["id"] = i++;
+        ud["url"] = item.url;
+        ud["key"] = item.api_key;
+        ud["can_delete"] = item.can_delete;
+    }
+    // for(int i= 0; i  < sizeof(cfg.rest_urls); i++) {
+    //     JsonObject ud = rurls.createNestedObject();
+        
+    //     //rurls.add(ud);
+    // }
     String json = "";
     serializeJson(doc, json);
     AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
@@ -493,6 +510,11 @@ void webserver_init() {
     server.on("/uplconfig", HTTP_POST, [](AsyncWebServerRequest *request){
         request->send(200, "application/json", "{\"code\": 200}");
     }, handleConfigUpload);
+    server.on("/fwupdate", HTTP_POST, []() {
+
+    }, []() {
+        
+    });
     AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
         StaticJsonDocument<200> data;
         if (json.is<JsonArray>())

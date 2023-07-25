@@ -1,5 +1,6 @@
 // Basic Config
 #include "senddata.h"
+#include <HTTPClient.h>
 
 // void setSendIRQ(TimerHandle_t xTimer) {
 //  xTaskNotify(irqHandlerTask, SENDCYCLE_IRQ, eSetBits);
@@ -75,6 +76,7 @@ while (bitmask) {
               if (gps_hasfix()) {
                 gps_storelocation(&gps_status);
                 payload.reset();
+                
                 payload.addGPS(gps_status);
                 SendPayload(GPSPORT);
               } else
@@ -86,6 +88,44 @@ while (bitmask) {
     bitmask &= ~mask;
     mask <<= 1;
   } // while (bitmask)
+  if((cfg.sendtype == LORA_PREFERABLY || cfg.sendtype == WLAN_ONLY) && systemCfg.inet_available ) {
+    //senden der Daten per Web, wenn Internet vorhanden
+    DynamicJsonDocument doc(1024);
+    JsonObject sds11 = doc.createNestedObject("sds011");
+    sds11["pm10"] = systemCfg.pm10;
+    sds11["pm25"] = systemCfg.pm25;
+    JsonObject bme280 = doc.createNestedObject("bme280");
+    bme280["temperature"] = systemCfg.temp;
+    bme280["humidity"] = systemCfg.hum;
+    bme280["pressure"] = systemCfg.press;
+    JsonObject loc = doc.createNestedObject("loaction");
+    loc["latitude"] = systemCfg.lat >0 ? systemCfg.lat : cfg.latitude;
+    loc["longitude"] = systemCfg.lon > 0 ? systemCfg.lon : cfg.longitude;
+    JsonObject sys = doc.createNestedObject("system");
+    sys["version"] = cfg.version;
+    sys["runmode"] = RTC_runmode;
+    sys["restarts"] = RTC_restarts;
+    sys["deveui"] = String(cfg.deveui, HEX);
+
+    time_t now;
+    struct tm timeinfo;
+    if(!getLocalTime(&timeinfo)){
+      sys["timestamp"] = 0;
+    } else {
+      time(&now);
+      sys["timestamp"] = now;
+    }
+    String json = "";
+    serializeJsonPretty(doc, json);
+    for(int i=0; i < sizeof(cfg.rest_urls); i++) {
+      HTTPClient client;
+      client.begin(cfg.rest_urls[0].url);
+      client.addHeader("Content-Type", "application/json");
+      client.addHeader("API-KEY", cfg.rest_urls[i].api_key);
+      int hresponse = client.POST(json);
+      json = String();
+    }
+  }
 } // sendData()
 
 void flushQueues(void) {

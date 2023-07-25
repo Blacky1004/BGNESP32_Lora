@@ -50,6 +50,7 @@ void setup() {
     systemCfg.heap = ESP.getHeapSize();
     systemCfg.freeheap = ESP.getFreeHeap();
     strncpy(cfg.model, ESP.getChipModel(), sizeof(ESP.getChipModel())) ;
+    loadRestUrls();
     //i2c Bus initialisieren...
     i2c_init();
 

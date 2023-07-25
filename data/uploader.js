@@ -28,7 +28,7 @@ Upload.prototype.doUpload = function() {
         xhr: function() {
             var myXhr = $.ajaxSettings.xhr();
             if(myXhr.upload) {
-                myXhr.upload.addEventListner('progress', that.progressHandling, false);
+                myXhr.upload.addEventListener('progress', that.progressHandling, false);
             }
             return myXhr;
         },

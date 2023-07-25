@@ -6,7 +6,7 @@
 #include <lmic.h>
 #include <WiFi.h>
 #include "Version.h"
-
+#include <vector>
 #ifdef HAS_RTC
 #include <RtcUtility.h>
 #include <RtcDateTime.h>
@@ -65,8 +65,17 @@ extern float	pm25Datas[];
 extern float	pm10Datas[];
 extern float	tempDatas[];
 extern float humdatas[];
+
 enum payloadSendType {LORA_ONLY, LORA_PREFERABLY, WLAN_ONLY};
 enum loraStatus {LORA_OFF, LORA_INIT, LORA_INITIALIZED,LORA_JOINING, LORA_JOINED, LORA_JOINWAIT};
+
+typedef struct {
+  uint16_t id;
+  char url[255];
+  bool can_delete;
+  char api_key[100];
+} resturls_t;
+
 typedef struct __attribute__((packed)) {
     char version[10];
     char wifi_ssid[32];
@@ -104,7 +113,7 @@ typedef struct __attribute__((packed)) {
     bool wakeup_manual;
     double latitude;
     double longitude;
-    
+    std::vector<resturls_t> rest_urls;
 } systemConfig_t;
 
 typedef struct {
@@ -169,5 +178,6 @@ typedef struct {
   bool inet_available;
   bool expertmode;
 } systemvars_t;
+
 
 #endif

@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="toastr.min.css" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico" />
-    <title>LoRa ESP32</title>
+    <title>Bürgernetz Gera-Greiz</title>
     <script src="jquery.js"></script>
     <script src="popper.min.js"></script>
     <script src="bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" integrity="sha512-fD9DI5bZwQxOi7MhYWnnNPlvXdp/2Pj3XSTRrFs5FQa4mizyGLnJcN6tuvUS6LbmgN1ut+XGSABKvjN0H6Aoow==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="chart.js"></script>
     <script src="toastr.min.js"></script>
     <style>
@@ -465,7 +463,13 @@
                                 <div class="col-sm-12 col-md-3">
                                     <button class="btn btn-primary" type="button" id="btncfgUpdate">Upload</button>
                                 </div>
+                                <div class="col-sm-12 col-md-12">
+                                    <div class="progress mt-4" style="height: 15px;" id="progress-wrp">
+                                        <div class="progress-bar bg-success" style="width: 0px;" role="progressbar"></div>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                         <div class="card-body border-top">
                             <h5 class="card-title">Firmware-Update</h5>
@@ -530,5 +534,6 @@
         var devmode = false;
     </script>
     <script src="system.js"></script>
+    <script src="uploader.js"></script>
 </body>
 </html>

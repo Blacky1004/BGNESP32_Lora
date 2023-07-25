@@ -106,8 +106,17 @@ void gps_storelocation(gpsStatus_t *gps_store) {
       cfg.longitude = gps.location.lng();
       saveConfig(false);
     }
+    if(gps_store->latitude <= 0) {
+      gps_store->latitude = cfg.latitude;
+    }
+    if(gps_store->longitude <= 0) {
+      gps_store->longitude = cfg.longitude;
+    }
   } else {
     ESP_LOGE(TAG, "Keine gültigen GPS Daten erhalten!");
+    gps_store->latitude = cfg.latitude;
+    gps_store->longitude = cfg.longitude;
+
     systemCfg.gps_latlng_valid = false;;
   }
 

@@ -1,12 +1,14 @@
 #include "globals.h"
 #include "config_bng.h"
-
+#include <SPIFFS.h>
+#include <vector>
 #define DEVCONFIG "bngcfg"
 
 Preferences nvram;
 
 systemConfig_t cfg;
 systemvars_t systemCfg;
+std::vector<resturls_t> urlList;
 
 static const uint8_t cfgMagicBytes[] = {0x0A, 0x04, 0x73, 0x08, 0x04};
 static const size_t cfgLen = sizeof(cfg), cfgLen2 = sizeof(cfgMagicBytes);
@@ -41,7 +43,7 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->countermode = COUNTERMODE;
 	myConfig->rssilimit = RSSILIMIT;
 	myConfig->sendcycle = SENDCYCLE;
-	myConfig->sleepcycle = SLEEPCYCLE / 60;
+	myConfig->sleepcycle = SLEEPCYCLE;
 	myConfig->wakesync = SYNCWAKEUP;
 	myConfig->payloadmask = PAYLOADMASK;
 	myConfig->wifi_mode = WIFI_STA;
@@ -52,6 +54,7 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->payloadqueue = SEND_QUEUE_SIZE;
 	myConfig->latitude = 0.0;
 	myConfig->longitude = 0.0;
+	
 	strcpy(myConfig->wifi_ssid, "");
 	strcpy(myConfig->wifi_password, "");	
 }
@@ -125,6 +128,53 @@ void loadConfig(void) {
 	default: //Die KOnfiguration ist aktuell
 		break;
 	}
+}
+
+void loadRestUrls(void) {
+	DynamicJsonDocument doc(2048);
+	File jsonFile = SPIFFS.open("/rest_clients.json", "r");
+	if(jsonFile){
+		deserializeJson(doc, jsonFile);
+		if(doc.containsKey("clients")){
+			urlList.clear();
+			for(JsonObject o: doc["clients"]) {
+				resturls_t t = {.can_delete = o["can_delete"]};
+				strcpy(t.api_key,  o["apikey"]);
+				t.id = o["id"];
+				strcpy(t.url, o["url"]);
+				urlList.push_back(t);
+			}
+		}
+	}
+}
+
+void saveRestUrls(void) {
+	DynamicJsonDocument doc(2048);
+	JsonArray arr = doc.createNestedArray("clients");
+	uint16_t i = 0;
+	for(resturls_t item : urlList){
+		JsonObject o = arr.createNestedObject();
+		o["id"] = i++;
+		o["url"] = item.url;
+		o["apikey"] = item.api_key;
+		o["can_delete"] = item.can_delete;
+	}
+	String json = "";
+	serializeJson(doc, json);
+	File jsonFile = SPIFFS.open("/rest_clients.json", "w");
+	jsonFile.write(json);
+	jsonFile.close();
+}
+
+uint16_t insertRestUrl(String url, String apiKey ,bool can_delete) {
+	size_t nextId = urlList.size();
+	resturls_t newEntry = {.can_delete = can_delete};
+	memcpy(newEntry.id, nextId, nextId);
+	strcpy(newEntry.api_key,  apiKey);
+	strcpy(newEntry.url, url);
+	urlList.push_back(newEntry);
+	saveRestUrls();
+	return newEntry.id;
 }
 
 bool comp(char s1, char s2) { return (tolower(s1) < tolower(s2));}
