@@ -102,6 +102,8 @@ typedef struct __attribute__((packed)) {
     uint32_t flashsize;
     uint32_t cpuspeed;
     bool wakeup_manual;
+    double latitude;
+    double longitude;
     
 } systemConfig_t;
 

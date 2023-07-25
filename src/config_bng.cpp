@@ -41,7 +41,7 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->countermode = COUNTERMODE;
 	myConfig->rssilimit = RSSILIMIT;
 	myConfig->sendcycle = SENDCYCLE;
-	myConfig->sleepcycle = SLEEPCYCLE;
+	myConfig->sleepcycle = SLEEPCYCLE / 60;
 	myConfig->wakesync = SYNCWAKEUP;
 	myConfig->payloadmask = PAYLOADMASK;
 	myConfig->wifi_mode = WIFI_STA;
@@ -50,6 +50,8 @@ static void defaultConfig(systemConfig_t *myConfig) {
 	myConfig->wakeup_manual = false;
 	myConfig->homecycle = HOMECYCLE;
 	myConfig->payloadqueue = SEND_QUEUE_SIZE;
+	myConfig->latitude = 0.0;
+	myConfig->longitude = 0.0;
 	strcpy(myConfig->wifi_ssid, "");
 	strcpy(myConfig->wifi_password, "");	
 }

@@ -33,7 +33,7 @@ Upload.prototype.doUpload = function() {
             return myXhr;
         },
         success: function(msg) {
-
+            toastr.success("Der Upload der Konfiguration war erfolgreich", "Übertragung erfolgreich",   {timeOut: 5000});
         },
         error: function(msg) {
 

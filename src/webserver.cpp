@@ -90,7 +90,7 @@ void handleLoraInfo(AsyncWebServerRequest * request) {
     doc["lwaitings"] = systemCfg.lora_waitings;
     doc["lpayload"] = systemCfg.last_payload;
     doc["rparams"] = systemCfg.radioParams; 
-
+    doc["hasinet"] = systemCfg.inet_available;
     String json = "";
     serializeJson(doc, json);
     AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
@@ -110,9 +110,9 @@ void handleSaveConfig(AsyncWebServerRequest *request) {
         Serial.printf("Param '%s' mit Value '%s'", p->name().c_str(), p->value().c_str());
         if(p->isPost()) {
             if(p->name() == "sleepcycle") {
-                uint16_t sc = strtoul( p->value().c_str(), NULL, 0);
+                uint16_t sc = (strtoul( p->value().c_str(), NULL, 0) * 60) / 10;
                 if( sc != cfg.sleepcycle) {
-                    cfg.sleepcycle = (sc * 60) / 10;
+                    cfg.sleepcycle = sc;
                     needRestart = true;
                     ESP_LOGD(TAG, "Setze SleepCycle auf %d", cfg.sleepcycle);
                     hasChanged = true;
@@ -251,6 +251,8 @@ void handleBackupConfig(AsyncWebServerRequest *request) {
     doc["wifi_mode"] = cfg.wifi_mode;
     doc["wifi_password"] = cfg.wifi_password;
     doc["wifi_ssid"] = cfg.wifi_ssid;
+    doc["longitude"] = cfg.longitude;
+    doc["latitude"] = cfg.latitude;
     String json = "";
     serializeJsonPretty(doc, json);
     File backup = SPIFFS.open("/backup.json", FILE_WRITE);
@@ -262,8 +264,23 @@ void handleBackupConfig(AsyncWebServerRequest *request) {
         request->send(SPIFFS, "/backup.json", "application/json", true);
     }
 }
-void handleConfigUpload(AsyncWebServerRequest * request) {
+void handleConfigUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    ESP_LOGD(TAG, "Client: %s ; URL: %s", request->client()->remoteIP().toString(), request->url());
+    if(!index) {
+        ESP_LOGD(TAG, "Starte Upload '%s'", filename);
+        request->_tempFile = SPIFFS.open("/"+filename, "w");
+    }
 
+    if(len) {
+        request->_tempFile.write(data, len);
+
+    }
+
+    if(final) {
+        ESP_LOGD(TAG, "Upload komplett: '%s' Größe: %d", filename, String(index + len));
+        request->_tempFile.close();
+        
+    }
 }
 void handleGetSystemConfig(AsyncWebServerRequest *request) {
     DynamicJsonDocument doc(1024);
@@ -473,6 +490,9 @@ void webserver_init() {
     server.on("/set_expert", HTTP_GET, handleExpertMode);
     server.on("/savecfg", HTTP_POST, handleSaveConfig);
     server.on("/resetsyscfg", HTTP_GET, handleResetConfig);
+    server.on("/uplconfig", HTTP_POST, [](AsyncWebServerRequest *request){
+        request->send(200, "application/json", "{\"code\": 200}");
+    }, handleConfigUpload);
     AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
         StaticJsonDocument<200> data;
         if (json.is<JsonArray>())

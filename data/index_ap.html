@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="toastr.min.css" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico" />
@@ -10,7 +11,7 @@
     <script src="jquery.js"></script>
     <script src="popper.min.js"></script>
     <script src="bootstrap.bundle.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" integrity="sha512-fD9DI5bZwQxOi7MhYWnnNPlvXdp/2Pj3XSTRrFs5FQa4mizyGLnJcN6tuvUS6LbmgN1ut+XGSABKvjN0H6Aoow==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="chart.js"></script>
     <script src="toastr.min.js"></script>
     <style>
@@ -115,8 +116,12 @@
                         </div>
                         <div class="mb-3">
                             <label for="nwkskey">DEV-EUI<span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nwkskey" name="nwkskey" required readonly placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
-                            
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="nwkskey" name="nwkskey" required readonly placeholder="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"/>
+                                <span class="input-group-text" style="cursor: pointer;" id="cpydeveui">
+                                    <i class="fa fa-copy"></i>
+                                </span>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="appskey">AppKey<span class="text-danger">*</span></label>
@@ -521,7 +526,7 @@
         var heap = 0 //%HEAP%;
         var loraAvailable = true//%LORAAVAILABLE%;
         var expertMode =  false;//%EXPERTMODE%;
-        var fwRawDate = "%FIRMWAREDATE%"; //"2023-07-21T10:30:42"; 
+        var fwRawDate = "2023-07-21T10:30:42"; 
         var devmode = false;
     </script>
     <script src="system.js"></script>

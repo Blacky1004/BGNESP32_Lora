@@ -98,6 +98,7 @@ int wifi_init() {
                 WiFi.mode(WIFI_STA);
                 WiFi.hostname(mySSID);
                 strcpy(systemCfg.hostname, WiFi.getHostname());
+                
                 ESP_LOGI(TAG,"Verbinde zu WLAN %s und Passwort '%s'", cfg.wifi_ssid, cfg.wifi_password);
                 status = WiFi.begin(cfg.wifi_ssid, cfg.wifi_password);
                 if(check_wifi()){
@@ -106,6 +107,7 @@ int wifi_init() {
                     ESP_LOGI(TAG, "lokale IP: %s", WiFi.localIP().toString());
                     systemCfg.wifi_ready = true;
                     lastStatus = WiFi.status();
+                    strcpy(systemCfg.wifi_ssid, WiFi.SSID().c_str());
                 } else {
                     ESP_LOGW(TAG, "Konnte keine Verbindung zu SSID '%s' aufbauen, starte AccessPoint.", cfg.wifi_ssid);
                     status = startAP();

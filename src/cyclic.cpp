@@ -53,7 +53,8 @@ ESP_LOGD(TAG,"***************** SENSORDATEN ******************");
     systemCfg.lon = gps.location.lng();
     systemCfg.altitude = gps.altitude.meters();
     systemCfg.sats = gps.satellites.value();
-
+    cfg.latitude = gps.location.lat();
+    cfg.longitude = gps.location.lng();
   }
 #endif
 

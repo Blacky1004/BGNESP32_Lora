@@ -553,7 +553,12 @@ function getLoraInfo() {
             } else {
                 document.getElementById("npl").innerHTML = "-";
             }
+            hasInternet = response["hasinet"];
             document.getElementById("lradio").innerHTML = response["rparams"];
+            document.getElementById("street").disabled = !hasInternet;
+            document.getElementById("plz").disabled = !hasInternet;
+            document.getElementById("ort").disabled = !hasInternet;
+            document.getElementById("checkgps").disabled = !hasInternet;
         }    
         ajaxBusy = false;            
     });
@@ -609,10 +614,20 @@ document.getElementById("savelocation").addEventListener("click", function(e) {
 document.getElementById("btncfgUpdate").addEventListener("click", function(e) {
     var fileInput = $("#newconfig")[0].files[0];
     if(fileInput) {
-        var upload = new Upload(fileInput, "/updcfg");
+        var upload = new Upload(fileInput, "/uplconfig");
         upload.doUpload();
     }
 });
+
+// document.getElementById("cpydeveui").addEventListener("click", function(e) {
+//     var ddeui = document.getElementById("nwkskey");
+
+//     if(ddeui && ddeui.value != ""){        
+//         ddeui.select();
+//         ddeui.setSelectionRange(0,99999);
+//         navigator.clipboard.writeText(ddeui.value);
+//     }
+// });
 
 function setFactoryDefault() {
     //Sicherheitsabfrage ob das wirklich gemacht werden soll
