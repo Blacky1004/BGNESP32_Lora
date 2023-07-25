@@ -4,8 +4,8 @@
 		"pm25" : 2.77
 	},
 	"bme280": {
-		"temperature": 28.8
-		"humidity": 43.2
+		"temperature": 28.8,
+		"humidity": 43.2,
 		"pressure": 998
 	},
 	"location" : {
@@ -14,9 +14,8 @@
 	},
 	"system": {
 		"version": "0.36.655",
-		"starts": 3,
 		"restarts": 4,
 		"timestamp": 16478954545,
-		"deveui": "eui-7045484765",
+		"deveui": "eui-7045484765"
 	}
 }

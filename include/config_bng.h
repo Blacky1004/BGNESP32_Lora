@@ -13,7 +13,7 @@ void loadConfig(void);
 void eraseConfig(void);
 void loadRestUrls(void);
 void saveRestUrls(void);
-uint16_t insertRestUrl(string url, bool can_delete)
+uint16_t insertRestUrl(String url, String apikey, bool can_delete);
 int version_compare(const String v1, const String v2);
 void sort_chart_data(String a_name, float newValue);
 

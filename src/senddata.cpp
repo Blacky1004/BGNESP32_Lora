@@ -117,14 +117,14 @@ while (bitmask) {
     }
     String json = "";
     serializeJsonPretty(doc, json);
-    for(int i=0; i < sizeof(cfg.rest_urls); i++) {
+    for(resturls_t item : urlList) {
       HTTPClient client;
-      client.begin(cfg.rest_urls[0].url);
+      client.begin(item.url);
       client.addHeader("Content-Type", "application/json");
-      client.addHeader("API-KEY", cfg.rest_urls[i].api_key);
+      client.addHeader("API-KEY", item.api_key);
       int hresponse = client.POST(json);
-      json = String();
     }
+    json = String();
   }
 } // sendData()
 

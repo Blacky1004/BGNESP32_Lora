@@ -1,5 +1,6 @@
 #include "webserver.h"
 #include <ArduinoJson.h>
+#include <vector>
 #include <Update.h>
 
 AsyncWebServer server(80);
@@ -296,19 +297,14 @@ void handleGetSystemConfig(AsyncWebServerRequest *request) {
     doc["adr"] = cfg.loradr;
     doc["txpower"] = cfg.txpower;
     JsonArray rurls = doc.createNestedArray("rest_urls");
-    int i= 0;
-    for(const resturls_t& item: cfg.rest_urls) {
+    for(resturls_t item: urlList) {
         JsonObject ud = rurls.createNestedObject();
-        ud["id"] = i++;
+        ud["id"] = item.id;
         ud["url"] = item.url;
         ud["key"] = item.api_key;
         ud["can_delete"] = item.can_delete;
     }
-    // for(int i= 0; i  < sizeof(cfg.rest_urls); i++) {
-    //     JsonObject ud = rurls.createNestedObject();
-        
-    //     //rurls.add(ud);
-    // }
+    
     String json = "";
     serializeJson(doc, json);
     AsyncWebServerResponse *response = request->beginResponse(200, F(CONTENT_TYPE_JSON), json);
@@ -392,11 +388,7 @@ String htmlProcessor(const String& var){
 }
 
 void webserver_init() {
-    // while (systemCfg.wifi_ready == false)
-    // {
-    //     delay(20);
-    // }
-    
+
     systemCfg.myip = systemCfg.wifi_mode == WIFI_AP ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
     ESP_LOGI(TAG,"Starte Webserver auf http://%s ...", systemCfg.myip);
 
@@ -510,11 +502,11 @@ void webserver_init() {
     server.on("/uplconfig", HTTP_POST, [](AsyncWebServerRequest *request){
         request->send(200, "application/json", "{\"code\": 200}");
     }, handleConfigUpload);
-    server.on("/fwupdate", HTTP_POST, []() {
+    // server.on("/fwupdate", HTTP_POST, []() {
 
-    }, []() {
+    // }, []() {
         
-    });
+    // });
     AsyncCallbackJsonWebHandler *check_wifi_handler = new AsyncCallbackJsonWebHandler("/save_wifi", [](AsyncWebServerRequest *request, JsonVariant &json){
         StaticJsonDocument<200> data;
         if (json.is<JsonArray>())

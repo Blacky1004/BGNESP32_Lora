@@ -137,7 +137,8 @@ void loadRestUrls(void) {
 		deserializeJson(doc, jsonFile);
 		if(doc.containsKey("clients")){
 			urlList.clear();
-			for(JsonObject o: doc["clients"]) {
+			JsonArray jarr = doc["clients"].as<JsonArray>();
+			for(JsonObject o: jarr) {
 				resturls_t t = {.can_delete = o["can_delete"]};
 				strcpy(t.api_key,  o["apikey"]);
 				t.id = o["id"];
@@ -160,18 +161,18 @@ void saveRestUrls(void) {
 		o["can_delete"] = item.can_delete;
 	}
 	String json = "";
-	serializeJson(doc, json);
 	File jsonFile = SPIFFS.open("/rest_clients.json", "w");
-	jsonFile.write(json);
+	serializeJson(doc, jsonFile);
 	jsonFile.close();
 }
 
 uint16_t insertRestUrl(String url, String apiKey ,bool can_delete) {
-	size_t nextId = urlList.size();
+	uint16_t nextId = sizeof(urlList) / sizeof(resturls_t);
+	
 	resturls_t newEntry = {.can_delete = can_delete};
-	memcpy(newEntry.id, nextId, nextId);
-	strcpy(newEntry.api_key,  apiKey);
-	strcpy(newEntry.url, url);
+	newEntry.id = nextId;
+	strcpy(newEntry.api_key,  apiKey.c_str());
+	strcpy(newEntry.url, url.c_str());
 	urlList.push_back(newEntry);
 	saveRestUrls();
 	return newEntry.id;

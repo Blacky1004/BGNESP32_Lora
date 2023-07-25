@@ -113,7 +113,6 @@ typedef struct __attribute__((packed)) {
     bool wakeup_manual;
     double latitude;
     double longitude;
-    std::vector<resturls_t> rest_urls;
 } systemConfig_t;
 
 typedef struct {
