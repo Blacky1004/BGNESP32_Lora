@@ -40,9 +40,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="javascript:void(0)" id="lnkConnections" onclick="showConnections()">Verbindungen</a>
                     </li>
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a class="nav-link" href="javascript:void(0)" id="lnkSensors" onclick="showSensors()">Sensoren</a>
-                    </li>
+                    </li> -->
                 </ul>
             </div>
         </div>
@@ -305,9 +305,352 @@
                 <button class="btn btn-primary" id="sysRestart" style="float: right; margin-right: 15px;">Neustart</button>
             </div>
         </div>
-        <div class="row gx-4 gx-lg-5" id="pSensors">
+        <!-- <div class="row gx-4 gx-lg-5" id="pSensors">
+            <div class="row page-title mb-4">
+                <div class="col-md-12 align-self-center">
+                    <h3 class="text-themecolor mb-0">Temperatursensoren</h3>
+                </div>
+            </div>
+            <div class="row" id="tempsensors">
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">BME/BMP 280</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="temperature.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 °C</h5>
+                                        <p class="text-muted mb-0">Temperatur</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="humidity.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 %</h5>
+                                        <p class="text-muted mb-0">Luftfeuchtigkeit</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row pt-3 ">
+                                <div class="col-4 col-xl-4">
+                                    <img src="pressure.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">258 hPa</h5>
+                                        <p class="text-muted mb-0">Luftdruck</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                                        
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">BME/BMP 680</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="temperature.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 °C</h5>
+                                        <p class="text-muted mb-0">Temperatur</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="humidity.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 %</h5>
+                                        <p class="text-muted mb-0">Luftfeuchtigkeit</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row pt-3 ">
+                                <div class="col-4 col-xl-4">
+                                    <img src="pressure.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">258 hPa</h5>
+                                        <p class="text-muted mb-0">Luftdruck</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                                        
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">DHT 11/22</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="temperature.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 °C</h5>
+                                        <p class="text-muted mb-0">Temperatur</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="humidity.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 %</h5>
+                                        <p class="text-muted mb-0">Luftfeuchtigkeit</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row pt-3 ">
+                                <div class="col-4 col-xl-4">
+                                    <img src="pressure.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">258 hPa</h5>
+                                        <p class="text-muted mb-0">Luftdruck</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                                        
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">DS 18B20</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="temperature.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 °C</h5>
+                                        <p class="text-muted mb-0">Temperatur</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="humidity.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 %</h5>
+                                        <p class="text-muted mb-0">Luftfeuchtigkeit</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row pt-3 ">
+                                <div class="col-4 col-xl-4">
+                                    <img src="pressure.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">258 hPa</h5>
+                                        <p class="text-muted mb-0">Luftdruck</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                                        
+                </div>
+            </div>
+            <div class="row page-title mb-4 mt-5">
+                <div class="col-md-12 align-self-center">
+                    <h3 class="text-themecolor mb-0">Sonstige Sensoren</h3>
+                </div>
+            </div>
+            <div class="row mb-5" id="customsensors">
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">GPS AGT360H</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="gps.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88</h5>
+                                        <p class="text-muted mb-0">Latitude</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="gps.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 %</h5>
+                                        <p class="text-muted mb-0">Longitude</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="sats.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">7</h5>
+                                        <p class="text-muted mb-0">Satelliten</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row pt-3 ">
+                                <div class="col-4 col-xl-4">
+                                    <img src="altitude.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">258 m</h5>
+                                        <p class="text-muted mb-0">Altitude</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                                        
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">Feinstaub SDS011</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3 border-bottom">
+                                <div class="col-4 col-xl-4">
+                                    <img src="particle.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 µg/m³</h5>
+                                        <p class="text-muted mb-0">PM 10</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row py-3">
+                                <div class="col-4 col-xl-4">
+                                    <img src="particle.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 µg/m³</h5>
+                                        <p class="text-muted mb-0">PM 2.5</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                                        
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h4 class="card-title">Gas(CO²) MQ7</h4>
+                                </div>
+                                <div class="ms-auto">
+                                    <input type="checkbox" class="form-check" id="enablebm280"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row pb-3">
+                                <div class="col-4 col-xl-4">
+                                    <img src="co2.png" />
+                                </div>
+                                <div class="col-8 col-xl-8 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="card-title mb-1">25.88 ppm</h5>
+                                        <p class="text-muted mb-0">Parts per Million</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>                                        
+                </div>
 
-        </div>
+            </div>
+        </div> -->
         <div class="row gx-4 gx-lg-5 mb-5" id="pSystem">            
             <div class="row">                
                 <div class="col-lg-6 d-flex align-items-stretch">
@@ -442,36 +785,6 @@
                             </div>
                         </div>
                         <div class="card-body border-top">
-                            <h5 class="card-title">Konfiguration</h3>
-                            <div class="row">
-                                <div class="col-sm-12 col-md-9">
-                                    <div class="mb-3">
-                                        <label class="control-labal col-form-label">Sicherung der aktuellen Konfiguration</label>
-                                    </div>
-                                </div>
-                                <div class="col-sm-12 col-md-3">
-                                    <div class="mb-3">
-                                        <button type="button" class="btn btn-primary" id="bckConfig">Backup</button>
-                                    </div>
-                                </div>
-                                
-                            </div>
-                            <div class="row">
-                                <div class="col-sm-12 col-md-9">
-                                    <input type="file" class="form-control" id="newconfig" name="newconfig"/>
-                                </div>
-                                <div class="col-sm-12 col-md-3">
-                                    <button class="btn btn-primary" type="button" id="btncfgUpdate">Upload</button>
-                                </div>
-                                <div class="col-sm-12 col-md-12">
-                                    <div class="progress mt-4" style="height: 15px;" id="progress-wrp">
-                                        <div class="progress-bar bg-success" style="width: 0px;" role="progressbar"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                        <div class="card-body border-top">
                             <h5 class="card-title">Firmware-Update</h5>
                             <div class="row">
                                 <div class="col-sm-12 col-md-9">
@@ -479,6 +792,44 @@
                                 </div>
                                 <div class="col-sm-12 col-md-3">
                                     <button class="btn btn-primary" type="button">Upload</button>
+                                </div>
+                                <div class="col-sm-12 col-md-12 mt-4">
+                                    <div class="progress" style="height: 15px;" id="progress-wrp">
+                                        <div class="progress-bar bg-success" style="width: 0px;" role="progressbar"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body border-top">
+                            <div class="d-flex align-items-start">
+                                <div>
+                                    <h5 class="card-title">SendeUrls (Rest-API)</h5>
+                                </div>
+                                <div class="ms-auto">
+                                    <button class="btn btn-success btn-sm" id="btnnewurl">Neu</button>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-sm-12 col-md-4">
+                                    <div class="list-group" id="restulist" style="overflow-y: auto;">
+
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-8">
+                                    <form id="frmresturl">
+                                        <label for="rid" class="form-label">ID</label>
+                                        <input type="number" class="form-control" readonly id="rid" name="rid"/>
+                                        <label for="rname" class="form-label">Name</label>
+                                        <input class="form-control" id="rname" name="rname" required />
+                                        <label for="rurl" class="form-label">API-URL</label>
+                                        <input type="url" class="form-control" required id="rurl" name="rurl" />
+                                        <label class="form-label" for="rkey">ApiKey</label>
+                                        <input class="form-control" id="rkey" name="rkey" />
+                                        <input type="hidden" id="can_delete" name="can_delete" />
+                                        <button type="button" id="btndelurl" class="btn btn-danger">Löschen</button>
+                                        <button id="btnsaveurl" class="btn btn-primary">Speichern</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -530,7 +881,7 @@
         var heap = 0 //%HEAP%;
         var loraAvailable = true//%LORAAVAILABLE%;
         var expertMode =  false;//%EXPERTMODE%;
-        var fwRawDate = "2023-07-21T10:30:42"; 
+        var fwRawDate =  "%FIRMWAREDATE%"; //"2023-07-21T10:30:42";  
         var devmode = false;
     </script>
     <script src="system.js"></script>

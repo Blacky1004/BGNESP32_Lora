@@ -72,9 +72,16 @@ enum loraStatus {LORA_OFF, LORA_INIT, LORA_INITIALIZED,LORA_JOINING, LORA_JOINED
 typedef struct {
   uint16_t id;
   char url[255];
+  char name[100];
   bool can_delete;
   char api_key[100];
 } resturls_t;
+
+typedef struct {
+  char version[10];
+  char min_version[10];
+  char max_version[10];
+} fileversions_info_t;
 
 typedef struct __attribute__((packed)) {
     char version[10];
@@ -113,6 +120,20 @@ typedef struct __attribute__((packed)) {
     bool wakeup_manual;
     double latitude;
     double longitude;
+    bool has_bme280;
+    bool has_bme680;
+    bool has_dht1122;
+    bool has_18b20;
+    bool has_gps;
+    bool has_sds;
+    bool has_mq7;
+    bool use_bme2;
+    bool use_bme6;
+    bool use_dht;
+    bool use_sds;
+    bool use_ds;
+    bool use_gps;
+    bool use_mq7;
 } systemConfig_t;
 
 typedef struct {
@@ -172,7 +193,7 @@ typedef struct {
   uint32_t freeheap;
   uint8_t lora_waitings;
   char radioParams[40];
-  time_t last_payload;
+  char last_payload[28];
   time_t actual_time;
   bool inet_available;
   bool expertmode;

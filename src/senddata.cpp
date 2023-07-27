@@ -10,7 +10,8 @@
 
 void setSendIRQ(void) { xTaskNotify(irqHandlerTask, SENDCYCLE_IRQ, eSetBits); }
 
-void SendPayload(uint8_t port) {
+void SendPayload(uint8_t port)
+{
   ESP_LOGD(TAG, "sending Payload for Port %d", port);
 
   MessageBuffer_t SendBuffer; // contains MessageSize, MessagePort, Message[]
@@ -29,9 +30,11 @@ void SendPayload(uint8_t port) {
 #ifdef HAS_MQTT
   mqtt_enqueuedata(&SendBuffer);
 #endif
+GetMyTime();
 } // SendPayload
 
-void sendData() {
+void sendData()
+{
   uint8_t bitmask = cfg.payloadmask;
   uint8_t mask = 1;
 
@@ -42,54 +45,60 @@ void sendData() {
   sdsStatus_t sds_status;
 #endif
 
-while (bitmask) {
-    ESP_LOGD(TAG,"Verarbeite MASKE: %d", mask);
-    switch (bitmask & mask) {
+  while (bitmask)
+  {
+    ESP_LOGD(TAG, "Verarbeite MASKE: %d", mask);
+    switch (bitmask & mask)
+    {
 
     case SDS11_DATA:
-      payload.reset();     
+      payload.reset();
 
-      #if (HAS_SDS011)
-            sds011_store(&sds_status);
-            payload.addSDS(sds_status);
-            SendPayload(SENSOR1PORT);
-      #endif
+#if (HAS_SDS011)
+      sds011_store(&sds_status);
+      payload.addSDS(sds_status);
+      SendPayload(SENSOR1PORT);
+#endif
 
-      #ifdef HAS_DISPLAY
-            //dp_plotCurve(count.pax, true);
-      #endif
-      
-    break; // case SDS11_DATA
+#ifdef HAS_DISPLAY
+      // dp_plotCurve(count.pax, true);
+#endif
 
-      #if (HAS_BME)
-          case MEMS_DATA:
-            payload.reset();
-            payload.addBME(bme_status);
-            SendPayload(BMEPORT);
-            break;
-      #endif
+      break; // case SDS11_DATA
 
-      #if (HAS_GPS)
-          case GPS_DATA:
-            if (GPSPORT != SDS11PORT) {
-              // send GPS position only if we have a fix
-              if (gps_hasfix()) {
-                gps_storelocation(&gps_status);
-                payload.reset();
-                
-                payload.addGPS(gps_status);
-                SendPayload(GPSPORT);
-              } else
-                ESP_LOGD(TAG, "No valid GPS position");
-            }
-            break;
-      #endif
+#if (HAS_BME)
+    case MEMS_DATA:
+      payload.reset();
+      payload.addBME(bme_status);
+      SendPayload(BMEPORT);
+      break;
+#endif
+
+#if (HAS_GPS)
+    case GPS_DATA:
+      if (GPSPORT != SDS11PORT)
+      {
+        // send GPS position only if we have a fix
+        if (gps_hasfix())
+        {
+          gps_storelocation(&gps_status);
+          payload.reset();
+
+          payload.addGPS(gps_status);
+          SendPayload(GPSPORT);
+        }
+        else
+          ESP_LOGD(TAG, "No valid GPS position");
+      }
+      break;
+#endif
     } // switch
     bitmask &= ~mask;
     mask <<= 1;
   } // while (bitmask)
-  if((cfg.sendtype == LORA_PREFERABLY || cfg.sendtype == WLAN_ONLY) && systemCfg.inet_available ) {
-    //senden der Daten per Web, wenn Internet vorhanden
+  if ((cfg.sendtype == LORA_PREFERABLY || cfg.sendtype == WLAN_ONLY) && systemCfg.inet_available)
+  {
+    // senden der Daten per Web, wenn Internet vorhanden
     DynamicJsonDocument doc(1024);
     JsonObject sds11 = doc.createNestedObject("sds011");
     sds11["pm10"] = systemCfg.pm10;
@@ -99,7 +108,7 @@ while (bitmask) {
     bme280["humidity"] = systemCfg.hum;
     bme280["pressure"] = systemCfg.press;
     JsonObject loc = doc.createNestedObject("loaction");
-    loc["latitude"] = systemCfg.lat >0 ? systemCfg.lat : cfg.latitude;
+    loc["latitude"] = systemCfg.lat > 0 ? systemCfg.lat : cfg.latitude;
     loc["longitude"] = systemCfg.lon > 0 ? systemCfg.lon : cfg.longitude;
     JsonObject sys = doc.createNestedObject("system");
     sys["version"] = cfg.version;
@@ -109,15 +118,19 @@ while (bitmask) {
 
     time_t now;
     struct tm timeinfo;
-    if(!getLocalTime(&timeinfo)){
+    if (!getLocalTime(&timeinfo))
+    {
       sys["timestamp"] = 0;
-    } else {
+    }
+    else
+    {
       time(&now);
       sys["timestamp"] = now;
     }
     String json = "";
     serializeJsonPretty(doc, json);
-    for(resturls_t item : urlList) {
+    for (resturls_t item : urlList)
+    {
       HTTPClient client;
       client.begin(item.url);
       client.addHeader("Content-Type", "application/json");
@@ -126,10 +139,12 @@ while (bitmask) {
     }
     json = String();
   }
+
 } // sendData()
 
-void flushQueues(void) {
-  //rcmd_queuereset();
+void flushQueues(void)
+{
+  // rcmd_queuereset();
 #if (HAS_LORA)
   lora_queuereset();
 #endif
@@ -141,7 +156,8 @@ void flushQueues(void) {
 #endif
 }
 
-bool allQueuesEmtpy(void) {
+bool allQueuesEmtpy(void)
+{
   uint32_t rc = 0;
 #if (HAS_LORA)
   rc += lora_queuewaiting();

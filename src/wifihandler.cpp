@@ -89,7 +89,7 @@ int wifi_init() {
     }
     if(cfg.wifi_mode == WIFI_STA) {
         //Stations modus
-        if(cfg.wifi_ssid == NULL || sizeof(cfg.wifi_ssid) < 1 || cfg.wifi_ssid == "") {
+        if(cfg.wifi_ssid == NULL || strlen(cfg.wifi_ssid) < 1 || cfg.wifi_ssid == "") {
            status = startAP();      
                 
         } else {

@@ -2,6 +2,7 @@
     "clients":[
         {
             "id": 0,
+            "name": "Freifunk Gera",
             "url": "https://freifunk-gera.de/importdata",
             "apikey":"",
             "can_delete": false

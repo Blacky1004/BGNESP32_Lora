@@ -35,7 +35,7 @@ bool timeIsValid(time_t const t);
 void calibrateTime(void);
 bool setMyTime(uint32_t t_sec, uint16_t t_msec, timesource_t mytimesource);
 time_t compileTime(void);
-time_t compileTime(void);
+void GetMyTime(void);
 time_t mkgmtime(const struct tm *ptm);
 TickType_t tx_Ticks(uint32_t framesize, unsigned long baud, uint32_t config, int8_t rxPin, int8_t txPins);
 #endif
