@@ -140,6 +140,6 @@ Wenn alles richtig eingestellt ist versucht nun die MCU sich bei TTN zu Joinen d
 ![WaitJoin](docs/images/lw_wait_join.png)
 
 Hier kann es nun je nach Reichweite eines Gateways und der Signalstärke, einige Zeit dauern. Im Idealfall sollte ihr auf der Weboberfläche nun folgendes Bild vorfinden....
-[loraOk](docs/images/lw_joined.png)
+![loraOk](docs/images/lw_joined.png)
 
 Somit ist nun Euer System bereit und sendet von nun an seine Messdaten über LoRaWAN.
